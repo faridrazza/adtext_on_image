@@ -31,7 +31,89 @@ def test_below_minimum_dimensions_warn():
 def test_wrong_aspect_ratio_warns():
     spec = platforms.resolve(Platform.META, AssetType.STORY_REEL)
     warnings = platforms.validate_dimensions(spec, 1080, 1080)
-    assert any("Aspect ratio" in w for w in warnings)
+    assert any("is not a shape" in w for w in warnings)
+
+
+# --- published sizes must never be reported as wrong ------------------------
+
+
+def test_every_published_size_validates_cleanly():
+    """A platform's own published size can never be off-spec."""
+    for platform in Platform:
+        for spec in platforms.specs_for(platform):
+            for width, height in spec.exact_sizes:
+                assert platforms.validate_dimensions(spec, width, height) == [], (
+                    f"{platform.value}/{spec.asset_type.value} {width}x{height}"
+                )
+
+
+def test_every_default_size_validates_cleanly():
+    for platform in Platform:
+        for spec in platforms.specs_for(platform):
+            width, height = spec.default_size
+            assert platforms.validate_dimensions(spec, width, height) == [], (
+                f"{platform.value}/{spec.asset_type.value}"
+            )
+
+
+@pytest.mark.parametrize(
+    ("width", "height", "why"),
+    [
+        (300, 250, "published size"),
+        (300, 600, "published size"),
+        (400, 400, "1:1 at another scale"),
+        (480, 600, "4:5 at another scale"),
+        (250, 250, "1:1 at another scale"),
+    ],
+)
+def test_sidebar_card_accepts_all_four_published_options(width, height, why):
+    """The spec lists 300x250, 300x600, 1:1 and 4:5 as alternatives."""
+    spec = platforms.resolve(Platform.WEBSITE, AssetType.SIDEBAR_CARD)
+    assert platforms.validate_dimensions(spec, width, height) == [], why
+
+
+def test_sidebar_card_still_rejects_an_unlisted_shape():
+    spec = platforms.resolve(Platform.WEBSITE, AssetType.SIDEBAR_CARD)
+    warnings = platforms.validate_dimensions(spec, 900, 200)  # 4.5:1
+    assert any("is not a shape" in w for w in warnings)
+
+
+def test_gbp_accepts_its_documented_minimum():
+    """720x720 is the published minimum, not an off-spec size."""
+    spec = platforms.resolve(Platform.GOOGLE_BUSINESS_PROFILE, AssetType.PHOTO)
+    assert platforms.validate_dimensions(spec, 720, 720) == []
+
+
+def test_gbp_warns_on_a_non_square_photo():
+    spec = platforms.resolve(Platform.GOOGLE_BUSINESS_PROFILE, AssetType.PHOTO)
+    warnings = platforms.validate_dimensions(spec, 1200, 800)
+    assert any("is not a shape" in w for w in warnings)
+
+
+def test_gbp_still_warns_below_the_minimum():
+    spec = platforms.resolve(Platform.GOOGLE_BUSINESS_PROFILE, AssetType.PHOTO)
+    warnings = platforms.validate_dimensions(spec, 600, 600)
+    assert any("minimum" in w for w in warnings)
+
+
+def test_larger_square_is_accepted_where_the_spec_states_a_minimum():
+    """PMax square is '1200x1200 minimum', so a bigger square is valid."""
+    spec = platforms.resolve(Platform.GOOGLE_ADS_PMAX, AssetType.SQUARE)
+    assert platforms.validate_dimensions(spec, 1500, 1500) == []
+
+
+def test_website_hero_accepts_both_published_sizes():
+    spec = platforms.resolve(Platform.WEBSITE, AssetType.HERO)
+    assert platforms.validate_dimensions(spec, 1920, 1080) == []
+    assert platforms.validate_dimensions(spec, 1920, 600) == []
+
+
+def test_website_section_only_constrains_width():
+    spec = platforms.resolve(Platform.WEBSITE, AssetType.SECTION)
+    assert platforms.validate_dimensions(spec, 1600, 900) == []
+    assert any(
+        "minimum" in w for w in platforms.validate_dimensions(spec, 1000, 700)
+    )
 
 
 def test_pmax_excludes_webp():

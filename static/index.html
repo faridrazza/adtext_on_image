@@ -149,6 +149,16 @@
   .drop-title { font-size: 13px; font-weight: 600; }
   .drop-sub { font-size: 12px; color: var(--ink-faint); }
 
+  .drop-idle { display: flex; flex-direction: column; align-items: center; gap: 9px; }
+  .drop-icon {
+    width: 46px; height: 38px;
+    color: var(--ink-faint);
+    fill: none; stroke: currentColor;
+    stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+    transition: color .12s;
+  }
+  .drop:hover .drop-icon, .drop.over .drop-icon { color: var(--accent); }
+
   .thumb-row { display: flex; align-items: center; gap: 12px; text-align: left; }
   .thumb {
     width: 56px; height: 56px; flex: none;
@@ -374,9 +384,14 @@
       <span class="eyebrow">1 · Source image</span>
       <div class="drop" id="drop">
         <input type="file" id="file" accept="image/png,image/jpeg,image/webp" />
-        <div id="dropIdle">
-          <div class="drop-title">Drop an image, or click to choose</div>
-          <div class="drop-sub">JPEG, PNG or WebP</div>
+        <div class="drop-idle" id="dropIdle">
+          <svg class="drop-icon" viewBox="0 0 48 40" aria-hidden="true">
+            <rect x="3" y="3" width="42" height="34" rx="3.5" />
+            <circle cx="16" cy="14" r="3.5" />
+            <path d="M5 31l11-10 7.5 6.8L31 21l12 10" />
+          </svg>
+          <div class="drop-title">Drop an image here</div>
+          <div class="drop-sub">or click to browse — JPEG, PNG or WebP</div>
         </div>
         <div class="thumb-row" id="dropFilled" hidden>
           <img class="thumb" id="thumb" alt="Selected source image" />
@@ -412,10 +427,7 @@
     <div class="field">
       <span class="eyebrow">5 · Output size</span>
       <dl class="spec" id="spec"></dl>
-      <label class="toggle">
-        <input type="checkbox" id="customSize" />
-        Override the platform size
-      </label>
+      <div class="tabs" id="sizeChips" role="group" aria-label="Output size"></div>
       <div class="size-grid" id="sizeGrid" hidden>
         <input type="number" id="width" min="64" max="3840" aria-label="Width" />
         <span class="size-x">×</span>
@@ -472,13 +484,19 @@
     thumb: $("thumb"), fileName: $("fileName"), fileFacts: $("fileFacts"),
     text: $("text"), wordCount: $("wordCount"),
     tabs: $("tabs"), slots: $("slots"), spec: $("spec"),
-    customSize: $("customSize"), sizeGrid: $("sizeGrid"), width: $("width"), height: $("height"),
+    sizeChips: $("sizeChips"), sizeGrid: $("sizeGrid"),
+    width: $("width"), height: $("height"),
     quality: $("quality"),
     go: $("go"), blockers: $("blockers"), form: $("form"),
     stage: $("stage"), report: $("report"), proofActions: $("proofActions"),
   };
 
-  const state = { platforms: [], platform: null, slot: null, file: null, busy: false };
+  // state.size: null = the platform default; "WxH" = another published size;
+  // "custom" = whatever is typed into the width/height inputs.
+  const state = {
+    platforms: [], platform: null, slot: null, file: null,
+    size: null, busy: false,
+  };
 
   const bytes = (n) =>
     n >= 1048576 ? (n / 1048576).toFixed(1) + " MB"
@@ -564,13 +582,68 @@
 
     el.width.value = a.default_width;
     el.height.value = a.default_height;
+    renderSizes(a);
     renderSpec(a);
     revalidate();
   }
 
+  function renderSizes(a) {
+    // Every size the platform publishes for this slot, the first being the
+    // default. Slots that publish none (website/section) show that default.
+    const published = a.published_sizes.length
+      ? a.published_sizes
+      : [`${a.default_width}x${a.default_height}`];
+
+    const options = published.map((size, i) => ({
+      label: size.replace("x", "×"),
+      value: i === 0 ? null : size,
+      note: i === 0 ? "default" : "",
+    }));
+    options.push({ label: "Custom…", value: "custom", note: "" });
+
+    setSize(null);
+    el.sizeChips.replaceChildren(...options.map((option) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "tab";
+      chip.textContent = option.note
+        ? `${option.label} · ${option.note}`
+        : option.label;
+      chip.setAttribute("aria-pressed", String(option.value === null));
+      chip.addEventListener("click", () => {
+        setSize(option.value);
+        [...el.sizeChips.children].forEach((c) =>
+          c.setAttribute("aria-pressed", String(c === chip)));
+      });
+      return chip;
+    }));
+  }
+
+  function setSize(value) {
+    state.size = value;
+    el.sizeGrid.hidden = value !== "custom";
+    if (value && value !== "custom") {
+      const [w, h] = value.split("x");
+      el.width.value = w;
+      el.height.value = h;
+    }
+    if (state.slot) renderSpec(state.slot);
+  }
+
+  function chosenSize() {
+    if (state.size === "custom") {
+      return [el.width.value, el.height.value];
+    }
+    if (state.size) return state.size.split("x");
+    return null;  // let the backend apply the platform default
+  }
+
   function renderSpec(a) {
+    const size = chosenSize();
     const rows = [
-      ["Output", `${a.default_width}×${a.default_height}`],
+      ["Output", size
+        ? `${size[0]}×${size[1]}`
+        : `${a.default_width}×${a.default_height}`],
       ["Formats", a.allowed_formats.join(" / ")],
       ["Max size", a.max_bytes ? bytes(a.max_bytes) : "—"],
       ["Min size", a.min_bytes ? bytes(a.min_bytes) : "—"],
@@ -610,9 +683,10 @@
     revalidate();
   });
 
-  el.customSize.addEventListener("change", () => {
-    el.sizeGrid.hidden = !el.customSize.checked;
-  });
+  [el.width, el.height].forEach((input) =>
+    input.addEventListener("input", () => {
+      if (state.slot) renderSpec(state.slot);
+    }));
 
   // ------------------------------------------------------------- validation
   function revalidate() {
@@ -645,9 +719,10 @@
     body.append("platform", state.platform.platform);
     body.append("asset_type", state.slot.asset_type);
     body.append("quality", el.quality.value);
-    if (el.customSize.checked) {
-      body.append("width", el.width.value);
-      body.append("height", el.height.value);
+    const size = chosenSize();
+    if (size) {
+      body.append("width", size[0]);
+      body.append("height", size[1]);
     }
 
     try {

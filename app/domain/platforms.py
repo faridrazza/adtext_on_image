@@ -337,11 +337,27 @@ def specs_for(platform: Platform) -> list[AssetSpec]:
     )
 
 
+def accepted_ratios(spec: AssetSpec) -> tuple[float, ...]:
+    """Every shape this slot accepts.
+
+    Platforms publish shapes two ways -- as pixel sizes and as bare ratios --
+    and both are equally valid. Google's sidebar/card slot, for instance, lists
+    "300x250, 300x600, 1:1, or 4:5": four alternatives, not four requirements.
+    """
+    ratios = list(spec.aspect_ratios)
+    ratios.extend(_ratio(w, h) for w, h in spec.exact_sizes)
+    return tuple(dict.fromkeys(ratios))
+
+
 def validate_dimensions(spec: AssetSpec, width: int, height: int) -> list[str]:
     """Check requested output dimensions against the spec.
 
     Returns warnings rather than raising: an off-spec asset still renders, and
     the caller decides whether to ship it.
+
+    A size is acceptable when it clears the minimums and either matches a
+    published size exactly, or has a published shape at a different scale.
+    Requiring both at once would reject the platforms' own published sizes.
     """
     warnings: list[str] = []
 
@@ -356,22 +372,25 @@ def validate_dimensions(spec: AssetSpec, width: int, height: int) -> list[str]:
             f"{spec.label}."
         )
 
-    if spec.exact_sizes and (width, height) not in spec.exact_sizes:
-        sizes = " or ".join(f"{w}x{h}" for w, h in spec.exact_sizes)
-        warnings.append(
-            f"{width}x{height} is not a published size for {spec.label} "
-            f"(expected {sizes})."
-        )
+    if (width, height) in spec.exact_sizes:
+        return warnings
 
-    if spec.aspect_ratios:
-        actual = _ratio(width, height)
-        if not any(
-            abs(actual - r) <= r * ASPECT_TOLERANCE for r in spec.aspect_ratios
-        ):
-            expected = ", ".join(f"{r:.3f}" for r in spec.aspect_ratios)
-            warnings.append(
-                f"Aspect ratio {actual:.3f} does not match {spec.label} "
-                f"(expected {expected})."
-            )
+    ratios = accepted_ratios(spec)
+    if not ratios:
+        return warnings
+
+    actual = _ratio(width, height)
+    if any(abs(actual - r) <= r * ASPECT_TOLERANCE for r in ratios):
+        return warnings
+
+    shapes = ", ".join(f"{r:.3f}" for r in ratios)
+    detail = ""
+    if spec.exact_sizes:
+        sizes = " or ".join(f"{w}x{h}" for w, h in spec.exact_sizes)
+        detail = f" Published sizes are {sizes}."
+    warnings.append(
+        f"{width}x{height} (ratio {actual:.3f}) is not a shape {spec.label} "
+        f"accepts (expected {shapes}).{detail}"
+    )
 
     return warnings
