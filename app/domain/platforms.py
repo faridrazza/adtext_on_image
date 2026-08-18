@@ -130,8 +130,8 @@ SPECS: dict[tuple[Platform, AssetType], AssetSpec] = {
         min_bytes=50 * KB,
         max_bytes=5 * MB,
         layout_guidance=(
-            "Google may crop this asset toward the centre. Keep all text and the "
-            "CTA inside the central 80% of the frame and away from the outer edges."
+            "Google may crop this asset toward the centre. Keep all text inside "
+            "the central 80% of the frame and away from the outer edges."
         ),
         notes=("WebP is not accepted by Google Ads PMax.",),
     ),
@@ -148,7 +148,7 @@ SPECS: dict[tuple[Platform, AssetType], AssetSpec] = {
         max_bytes=5 * MB,
         layout_guidance=(
             "Wide, shallow frame. Use a single short headline on one or two lines "
-            "and place the CTA on the same horizontal band to avoid vertical crowding."
+            "to avoid vertical crowding."
         ),
         notes=("WebP is not accepted by Google Ads PMax.",),
     ),
@@ -164,8 +164,8 @@ SPECS: dict[tuple[Platform, AssetType], AssetSpec] = {
         min_bytes=50 * KB,
         max_bytes=5 * MB,
         layout_guidance=(
-            "Tall frame. Stack the headline and CTA vertically in the lower third, "
-            "leaving the upper area for the existing subject."
+            "Tall frame. Set the text in the lower third, leaving the upper area "
+            "for the existing subject."
         ),
         notes=("WebP is not accepted by Google Ads PMax.",),
     ),
@@ -212,8 +212,8 @@ SPECS: dict[tuple[Platform, AssetType], AssetSpec] = {
         aspect_ratios=(4 / 5,),
         max_bytes=30 * MB,
         layout_guidance=(
-            "Tall feed placement. Place the headline and CTA in the lower third so "
-            "they survive feed cropping."
+            "Tall feed placement. Place the text in the lower third so it survives "
+            "feed cropping."
         ),
     ),
     (Platform.META, AssetType.STORY_REEL): AssetSpec(
@@ -237,8 +237,8 @@ SPECS: dict[tuple[Platform, AssetType], AssetSpec] = {
         aspect_ratios=(1200 / 630,),
         max_bytes=30 * MB,
         layout_guidance=(
-            "Wide, shallow frame. One short headline plus the CTA; avoid stacking "
-            "more than two lines of text."
+            "Wide, shallow frame. One short headline; avoid stacking more than "
+            "two lines of text."
         ),
     ),
     # ------------------------------------------- Google Business Profile
@@ -252,8 +252,7 @@ SPECS: dict[tuple[Platform, AssetType], AssetSpec] = {
         max_bytes=5 * MB,
         layout_guidance=(
             "Business Profile photos are shown at small sizes and are often "
-            "cropped square. Use a short headline at high contrast and keep the CTA "
-            "compact."
+            "cropped square. Use a short headline at high contrast."
         ),
         notes=(
             "Google Business Profile shows a maximum of 10 photos; plan the set "
@@ -269,8 +268,8 @@ SPECS: dict[tuple[Platform, AssetType], AssetSpec] = {
         allowed_formats=("JPEG", "PNG", "WEBP"),
         requires_alt_text=True,
         layout_guidance=(
-            "Wide hero banner. Text usually sits on one side over a calmer region "
-            "of the image, with the CTA directly beneath the headline."
+            "Wide hero banner. Text usually sits on one side, over a calmer region "
+            "of the image rather than across the centre."
         ),
         notes=("Website assets should be 72 DPI and sRGB.",),
     ),
@@ -286,7 +285,7 @@ SPECS: dict[tuple[Platform, AssetType], AssetSpec] = {
         default_size_override=(1200, 800),
         layout_guidance=(
             "In-page section image. Keep the overlay restrained -- a short headline "
-            "and CTA only, since surrounding page copy carries the detail."
+            "only, since surrounding page copy carries the detail."
         ),
         notes=(
             "Website assets should be 72 DPI and sRGB.",
@@ -303,8 +302,8 @@ SPECS: dict[tuple[Platform, AssetType], AssetSpec] = {
         allowed_formats=("JPEG", "PNG", "WEBP"),
         requires_alt_text=True,
         layout_guidance=(
-            "Very small render size. Use a handful of words at large relative type "
-            "and a single short CTA; fine detail will not be legible."
+            "Very small render size. Use a handful of words at large relative type; "
+            "fine detail will not be legible."
         ),
         notes=("Website assets should be 72 DPI and sRGB.",),
     ),

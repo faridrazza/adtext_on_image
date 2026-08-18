@@ -1,4 +1,4 @@
-"""Main flow for rendering ad text and a CTA onto an uploaded image.
+"""Main flow for setting ad text over an uploaded image.
 
 This is the only place the end-to-end sequence is expressed. Each step is
 delegated to a service; the controller owns ordering, validation and assembly
@@ -12,7 +12,9 @@ import logging
 
 from app.api.schemas import (
     MEDIA_TYPES,
+    ApprovedCopy,
     AssetInfo,
+    ImageQuality,
     RenderedImage,
     RenderResponse,
     SourceImageInfo,
@@ -26,6 +28,7 @@ from app.core.errors import (
 from app.domain import platforms
 from app.domain.platforms import AssetType, Platform
 from app.services import image_service, prompt_service
+from app.services.copy_service import CopyService
 from app.services.openai_image_service import OpenAIImageService
 
 logger = logging.getLogger(__name__)
@@ -37,9 +40,13 @@ MAX_DIMENSION = 3840
 
 class AdImageController:
     def __init__(
-        self, image_model: OpenAIImageService, settings: Settings
+        self,
+        image_model: OpenAIImageService,
+        copy_model: CopyService,
+        settings: Settings,
     ) -> None:
         self._image_model = image_model
+        self._copy_model = copy_model
         self._settings = settings
 
     async def render(
@@ -51,6 +58,7 @@ class AdImageController:
         asset_type: AssetType,
         width: int | None = None,
         height: int | None = None,
+        quality: ImageQuality | None = None,
     ) -> RenderResponse:
         # 1. Resolve the target slot. Raises if the combination is invalid.
         spec = platforms.resolve(platform, asset_type)
@@ -88,19 +96,36 @@ class AdImageController:
             warnings.extend(platforms.validate_dimensions(spec, width, height))
         warnings.extend(spec.notes)
 
-        # 7. Build the editing brief and render.
-        prompt = prompt_service.build_prompt(
-            source_text=source_text, spec=spec, width=width, height=height
-        )
-        rendered = await self._image_model.render(
-            image_png=image_service.to_png_bytes(source.data),
-            prompt=prompt,
+        # 7. Decide the copy. The copy model reads the photograph and the
+        #    source text; its output is policy-checked before anything renders.
+        image_png = image_service.to_png_bytes(source.data)
+        copy = await self._copy_model.write(
+            image_png=image_png,
+            source_text=source_text,
+            spec=spec,
             width=width,
             height=height,
         )
+
+        # 8. Render the approved words. The image model is given only those
+        #    words -- never the source text, which it would otherwise transcribe.
+        rendered = await self._image_model.render(
+            image_png=image_png,
+            prompt=prompt_service.build_render_prompt(
+                headline=copy.headline,
+                subheadline=copy.subheadline,
+                placement=copy.placement.value,
+                spec=spec,
+                width=width,
+                height=height,
+            ),
+            width=width,
+            height=height,
+            quality=quality.value if quality else None,
+        )
         warnings.extend(rendered.size_plan.warnings)
 
-        # 8. Force the result to the exact target size, format and weight.
+        # 9. Force the result to the exact target size, format and weight.
         final, encode_warnings = image_service.finalize(
             rendered.image_bytes, width=width, height=height, spec=spec
         )
@@ -139,7 +164,15 @@ class AdImageController:
                 output_height=height,
                 dimension_source=dimension_source,
             ),
+            ad_copy=ApprovedCopy(
+                headline=copy.headline,
+                subheadline=copy.subheadline,
+                placement=copy.placement.value,
+                source_support=copy.source_support,
+            ),
             model=rendered.model,
+            copy_model=self._copy_model.model,
+            quality=rendered.quality,
             alt_text=prompt_service.derive_alt_text(source_text, spec),
             warnings=warnings,
         )

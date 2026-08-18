@@ -294,6 +294,21 @@
     * { transition: none !important; }
   }
 
+  /* The written copy is the product of stage one, so it gets real prominence. */
+  .copyout {
+    display: flex; flex-direction: column; gap: 6px;
+    padding: 16px;
+    border-top: 1px solid var(--rule);
+    background: var(--accent-dim);
+  }
+  .copyout .headline { font-size: 19px; font-weight: 650; letter-spacing: -.015em; }
+  .copyout .sub { font-size: 14px; color: var(--ink-soft); }
+  .copyout .support {
+    margin-top: 3px;
+    font: 400 11.5px/1.5 var(--mono);
+    color: var(--ink-soft);
+  }
+
   .meta {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -347,7 +362,7 @@
 <header class="masthead">
   <div>
     <h1>Ad Asset Bench</h1>
-    <p>Add ad copy and a call-to-action to an image, sized for its target placement.</p>
+    <p>Set ad text over an image, sized for its target placement. Text only — no graphics added.</p>
   </div>
   <span class="chip"><span class="dot" id="statusDot"></span><span id="statusText">connecting…</span></span>
 </header>
@@ -409,6 +424,19 @@
     </div>
 
     <div class="field">
+      <div class="field-head">
+        <span class="eyebrow">6 · Render quality</span>
+        <span class="hint">cheapest first</span>
+      </div>
+      <select id="quality">
+        <option value="low" selected>Low — fastest and cheapest</option>
+        <option value="medium">Medium</option>
+        <option value="high">High — slowest and most expensive</option>
+        <option value="auto">Auto — let the model decide</option>
+      </select>
+    </div>
+
+    <div class="field">
       <button class="go" id="go" type="submit" disabled>Render asset</button>
       <span class="blockers" id="blockers"></span>
     </div>
@@ -445,6 +473,7 @@
     text: $("text"), wordCount: $("wordCount"),
     tabs: $("tabs"), slots: $("slots"), spec: $("spec"),
     customSize: $("customSize"), sizeGrid: $("sizeGrid"), width: $("width"), height: $("height"),
+    quality: $("quality"),
     go: $("go"), blockers: $("blockers"), form: $("form"),
     stage: $("stage"), report: $("report"), proofActions: $("proofActions"),
   };
@@ -615,6 +644,7 @@
     body.append("source_text", el.text.value);
     body.append("platform", state.platform.platform);
     body.append("asset_type", state.slot.asset_type);
+    body.append("quality", el.quality.value);
     if (el.customSize.checked) {
       body.append("width", el.width.value);
       body.append("height", el.height.value);
@@ -649,8 +679,19 @@
       ["Weight", bytes(d.image.size_bytes)],
       ["Source", `${d.source_image.width}×${d.source_image.height}`],
       ["Sizing", d.asset.dimension_source.replace(/_/g, " ")],
+      ["Placement", d.ad_copy.placement.replace(/_/g, " ")],
+      ["Quality", d.quality],
       ["Model", d.model],
     ];
+
+    const c = d.ad_copy;
+    const copyBlock =
+      `<div class="copyout">
+         <span class="eyebrow">Copy written for this placement</span>
+         <span class="headline">${esc(c.headline)}</span>
+         ${c.subheadline ? `<span class="sub">${esc(c.subheadline)}</span>` : ""}
+         <span class="support">Supported by: “${esc(c.source_support)}”</span>
+       </div>`;
 
     const notes = [];
     if (d.alt_text) {
@@ -661,6 +702,7 @@
     notes.push(`<div class="note info"><span>${esc(d.rendering_notice)}</span></div>`);
 
     el.report.innerHTML =
+      copyBlock +
       `<dl class="meta">${meta.map(([k, v]) =>
         `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
        <div class="notes">${notes.join("")}</div>`;

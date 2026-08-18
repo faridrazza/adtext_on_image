@@ -10,6 +10,7 @@ from app.api.schemas import (
     AssetTypeInfo,
     CapabilitiesResponse,
     ErrorResponse,
+    ImageQuality,
     PlatformInfo,
     RenderResponse,
 )
@@ -97,9 +98,17 @@ async def render_ad_image(
             "platform and asset type. Must be sent together with width."
         ),
     ),
+    quality: ImageQuality | None = Form(
+        None,
+        description=(
+            "Render quality: low, medium, high or auto. Omit to use the "
+            "configured default (low), which is cheapest and fastest."
+        ),
+    ),
     controller: AdImageController = Depends(get_controller),
 ) -> RenderResponse:
-    """Render approved ad text and a CTA onto the supplied image.
+    """Set approved ad text over the supplied image. Text only -- no
+    call-to-action, logo, icon or graphic is added.
 
     Output dimensions are derived from ``platform`` and ``asset_type``; supply
     ``width`` and ``height`` only to deliberately override them.
@@ -111,4 +120,5 @@ async def render_ad_image(
         asset_type=asset_type,
         width=width,
         height=height,
+        quality=quality,
     )

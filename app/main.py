@@ -29,9 +29,9 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         version="1.0.0",
         description=(
-            "Adds platform-appropriate ad text and a call-to-action to an "
-            "existing image. The supplied source text is the only permitted "
-            "basis for the copy."
+            "Sets platform-appropriate ad text over an existing image. Text "
+            "only -- no calls-to-action, logos, icons or graphics are added. "
+            "The supplied source text is the only permitted basis for the copy."
         ),
     )
 

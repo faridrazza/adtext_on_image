@@ -45,6 +45,13 @@ class InsufficientSourceTextError(AdImageError):
     code = "insufficient_source_text"
 
 
+class CopyGenerationError(AdImageError):
+    """The copy model failed, or its output broke the accuracy rules."""
+
+    status_code = 502
+    code = "copy_generation_failed"
+
+
 class RenderingError(AdImageError):
     """The image model failed or returned something unusable."""
 

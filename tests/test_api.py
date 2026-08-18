@@ -101,6 +101,24 @@ def test_output_size_is_derived_from_the_asset_type(
         assert img.size == expected
 
 
+def test_quality_defaults_to_low(client, stub_model):
+    body = post(client).json()
+    assert stub_model.last_quality == "low"
+    assert body["quality"] == "low"
+
+
+@pytest.mark.parametrize("quality", ["low", "medium", "high", "auto"])
+def test_quality_can_be_set_per_request(client, stub_model, quality):
+    body = post(client, quality=quality).json()
+    assert stub_model.last_quality == quality
+    assert body["quality"] == quality
+
+
+def test_unknown_quality_is_refused(client, stub_model):
+    assert post(client, quality="ultra").status_code == 422
+    assert stub_model.calls == 0
+
+
 def test_explicit_dimensions_override_the_default(client):
     body = post(client, width=1440, height=1440).json()
     assert (body["image"]["width"], body["image"]["height"]) == (1440, 1440)
@@ -136,11 +154,36 @@ def test_every_response_carries_the_rendering_notice(client):
     assert "generative image model" in post(client).json()["rendering_notice"]
 
 
-def test_source_text_reaches_the_model_prompt(client, stub_model):
+def test_source_text_reaches_the_copywriter(client, stub_copy):
     post(client)
-    assert stub_model.calls == 1
-    assert SOURCE_TEXT in stub_model.last_prompt
-    assert "RULE 2" in stub_model.last_prompt
+    assert stub_copy.calls == 1
+    assert stub_copy.last_source_text == SOURCE_TEXT
+
+
+def test_source_text_never_reaches_the_image_model(client, stub_model):
+    """Regression: a source-text block in the render prompt gets transcribed
+    onto the image verbatim. The image model must only see the final words."""
+    post(client)
+    prompt = stub_model.last_prompt
+    assert SOURCE_TEXT not in prompt
+    for fragment in ("Handmade sourdough", "downtown bakery", "reserve a loaf"):
+        assert fragment not in prompt
+
+
+def test_image_prompt_carries_only_the_approved_copy(client, stub_model, stub_copy):
+    stub_copy.headline = "Baked Before You Wake"
+    post(client)
+    assert '"Baked Before You Wake"' in stub_model.last_prompt
+
+
+def test_response_returns_the_approved_copy(client, stub_copy):
+    stub_copy.headline = "Baked Before You Wake"
+    body = post(client).json()
+    assert body["ad_copy"]["headline"] == "Baked Before You Wake"
+    assert body["ad_copy"]["subheadline"] is None
+    assert body["ad_copy"]["placement"] == "bottom_left"
+    assert body["ad_copy"]["source_support"]
+    assert body["copy_model"] == "stub-copy-model"
 
 
 def test_alt_text_is_returned_only_where_the_platform_requires_it(client):

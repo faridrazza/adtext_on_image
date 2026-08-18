@@ -2,7 +2,22 @@
 
 from __future__ import annotations
 
+from enum import Enum
+
 from pydantic import BaseModel, Field
+
+
+class ImageQuality(str, Enum):
+    """Render quality accepted by the image model.
+
+    Defaults to LOW: it is markedly cheaper and faster, and text-only overlays
+    rarely benefit from the higher tiers.
+    """
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    AUTO = "auto"
 
 MEDIA_TYPES = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
 
@@ -10,10 +25,21 @@ MEDIA_TYPES = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
 # output is a re-rendered image rather than the original bytes with an overlay.
 RENDERING_NOTICE = (
     "The output image was produced by a generative image model. The model is "
-    "instructed to reproduce the source image unchanged and to add only text "
-    "and a call-to-action, but pixels are re-rendered and exact preservation of "
-    "the original is not guaranteed. Review before publishing."
+    "instructed to reproduce the source image unchanged and to add text only, "
+    "but pixels are re-rendered and exact preservation of the original is not "
+    "guaranteed. Review before publishing."
 )
+
+
+class ApprovedCopy(BaseModel):
+    """The words actually set on the image, and what justifies them."""
+
+    headline: str
+    subheadline: str | None = None
+    placement: str
+    source_support: str = Field(
+        description="The fragment of source_text that makes the headline true."
+    )
 
 
 class RenderedImage(BaseModel):
@@ -48,9 +74,18 @@ class AssetInfo(BaseModel):
 
 class RenderResponse(BaseModel):
     image: RenderedImage
+    # Not named `copy`: that shadows BaseModel.copy on pydantic models.
+    ad_copy: ApprovedCopy = Field(
+        description=(
+            "The copy written for this asset. Returned so every claim on the "
+            "image can be audited without reading pixels."
+        )
+    )
     source_image: SourceImageInfo
     asset: AssetInfo
     model: str
+    copy_model: str
+    quality: str = Field(description="Render quality actually used.")
     alt_text: str | None = Field(
         default=None,
         description=(

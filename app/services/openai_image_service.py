@@ -53,6 +53,7 @@ class RenderResult:
     image_bytes: bytes
     size_plan: SizePlan
     model: str
+    quality: str
 
 
 def _align_up(value: float) -> int:
@@ -154,7 +155,7 @@ def plan_size(model: str, width: int, height: int) -> SizePlan:
 
 
 class OpenAIImageService:
-    """Renders the ad text and CTA onto an image via the edit endpoint."""
+    """Sets the ad text over an image via the edit endpoint."""
 
     def __init__(self, settings: Settings) -> None:
         if not settings.openai_api_key:
@@ -173,6 +174,10 @@ class OpenAIImageService:
     def model(self) -> str:
         return self._model
 
+    @property
+    def default_quality(self) -> str:
+        return self._quality
+
     async def render(
         self,
         *,
@@ -180,8 +185,10 @@ class OpenAIImageService:
         prompt: str,
         width: int,
         height: int,
+        quality: str | None = None,
     ) -> RenderResult:
         plan = plan_size(self._model, width, height)
+        resolved_quality = quality or self._quality
 
         try:
             # Deliberately no `response_format`: it is a dall-e-2-only parameter
@@ -193,7 +200,7 @@ class OpenAIImageService:
                 prompt=prompt,
                 size=plan.size_param,
                 output_format="png",
-                quality=self._quality,
+                quality=resolved_quality,
             )
         except OpenAIError as exc:
             logger.exception("Image edit request failed")
@@ -212,5 +219,8 @@ class OpenAIImageService:
             ) from exc
 
         return RenderResult(
-            image_bytes=image_bytes, size_plan=plan, model=self._model
+            image_bytes=image_bytes,
+            size_plan=plan,
+            model=self._model,
+            quality=resolved_quality,
         )

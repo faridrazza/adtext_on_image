@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from app.api.controller import AdImageController
 from app.core.config import get_settings
+from app.services.copy_service import CopyService
 from app.services.openai_image_service import OpenAIImageService
 
 _controller: AdImageController | None = None
@@ -17,5 +18,7 @@ def get_controller() -> AdImageController:
     global _controller
     if _controller is None:
         settings = get_settings()
-        _controller = AdImageController(OpenAIImageService(settings), settings)
+        _controller = AdImageController(
+            OpenAIImageService(settings), CopyService(settings), settings
+        )
     return _controller
