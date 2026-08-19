@@ -1,0 +1,796 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Batch Test Results</title>
+<style>
+  :root {
+    --paper:#f7f8fa; --surface:#fff; --ink:#16202e; --soft:#5a6878;
+    --faint:#8b97a6; --rule:#dfe4eb; --accent:#1d5bd6; --ok:#067647;
+    --warn:#a8620a; --warn-dim:#fdf3e6; --bad:#b42318; --bad-dim:#fdecea;
+    --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font:15px/1.55 ui-sans-serif,"Segoe UI",system-ui,sans-serif}
+  header{padding:22px 28px;background:var(--surface);
+    border-bottom:1px solid var(--rule);display:flex;flex-wrap:wrap;
+    gap:20px;align-items:baseline;justify-content:space-between}
+  h1{margin:0;font-size:17px;font-weight:650}
+  .stats{display:flex;gap:18px;font-family:var(--mono);font-size:12.5px}
+  .stats b{font-size:15px}
+  .pass{color:var(--ok)} .failc{color:var(--bad)}
+  .grid{display:grid;gap:16px;padding:24px 28px;
+    grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+  .card{background:var(--surface);border:1px solid var(--rule);border-radius:8px;
+    overflow:hidden;display:flex;flex-direction:column;
+    box-shadow:0 1px 2px rgba(22,32,46,.05)}
+  .card.bad{border-color:#f0c4c0}
+  .stage{background:#f2f4f8;display:grid;place-items:center;padding:14px;min-height:190px}
+  .stage img{max-width:100%;max-height:300px;border:1px solid var(--rule)}
+  .fail{display:flex;flex-direction:column;gap:6px;align-items:center;
+    color:var(--bad);font:600 13px var(--mono);text-align:center}
+  .fail span{font-weight:400;font-size:11.5px;max-width:34ch}
+  .body{padding:12px 14px;display:flex;flex-direction:column;gap:7px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .chip{font:600 10px var(--mono);letter-spacing:.06em;text-transform:uppercase;
+    background:#eef2f9;color:var(--soft);padding:3px 7px;border-radius:100px}
+  .plat{font:500 11.5px var(--mono);color:var(--accent)}
+  .headline{margin:0;font-size:15px;font-weight:640;line-height:1.3}
+  .sub{margin:0;font-size:13px;color:var(--soft)}
+  .meta{margin:0;font:400 11.5px var(--mono);color:var(--faint)}
+  .warn{margin:2px 0 0;padding:8px 10px 8px 22px;background:var(--warn-dim);
+    border-left:3px solid var(--warn);border-radius:4px;
+    font-size:11.5px;color:#6f4207}
+  details{font-size:12px;color:var(--soft)}
+  summary{cursor:pointer;color:var(--accent);font-size:12px}
+  .src{margin:6px 0;line-height:1.5}
+  .thumbin{display:block;width:100%;height:auto;margin-top:8px;border:1px solid var(--rule);border-radius:4px;background:#f2f4f8}
+</style></head><body>
+<header>
+  <div><h1>Batch Test Results</h1>
+    <p style="margin:3px 0 0;font-size:13px;color:var(--soft)">
+      19 Aug 2026, 00:48 · sheet: social_media_content (2).xlsx</p></div>
+  <div class="stats">
+    <span>total <b>49</b></span>
+    <span class="pass">passed <b>49</b></span>
+    <span class="failc">failed <b>0</b></span>
+    <span>time <b>92.8m</b></span>
+  </div>
+</header>
+<div class="grid">
+        <article class="card ok">
+          <div class="stage"><img src="output/row02_meta_feed_square_1080x1080.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 2</span>
+              <span class="plat">Meta | 1080x1080 | Square</span></div>
+            <p class="headline">Warmth, From the Ground Up</p>
+            <p class="sub">Wide-plank wood look with room-defining elegance</p>
+            <p class="meta">1080×1080 · 381 KB · 39.5s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Wide-plank wood-look flooring that brings warmth and elegance to any room with a view. Ready to upgrade your floors? Get your free estimate today!</p>
+              <img class="thumbin" src="input/row02.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row03_google_ads_pmax_landscape_1200x628.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 3</span>
+              <span class="plat">Google Ads | 1200x628 | Landscape</span></div>
+            <p class="headline">Seamless Walls. Skilled Hands</p>
+            <p class="sub">Drywall repair and installation</p>
+            <p class="meta">1200×628 · 181 KB · 32.9s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Smooth, seamless walls and ceilings start with skilled hands and quality craftsmanship. Need drywall repair or installation? Contact us today for a free quote!</p>
+              <img class="thumbin" src="input/row03.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row04_google_business_profile_photo_1080x1080.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 4</span>
+              <span class="plat">GBP | 1080x1080 | Square</span></div>
+            <p class="headline">Protect What Makes Home Beautiful</p>
+            
+            <p class="meta">1080×1080 · 501 KB · 32.3s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">A stunning exterior deserves a finish that protects and impresses for years to come. Thinking about refreshing your home&#x27;s exterior? Reach out for your free estimate today!</p>
+              <img class="thumbin" src="input/row04.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row05_meta_story_reel_1080x1920.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 5</span>
+              <span class="plat">Meta | 1080x1920 | Story/Reel</span></div>
+            <p class="headline">Flawless, Even Up Here</p>
+            
+            <p class="meta">1080×1920 · 360 KB · 42.6s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Careful, skilled work on high ceilings and stairwells for a flawless finish from top to bottom. Have hard-to-reach areas that need attention? Contact us for your free estimate!</p>
+              <img class="thumbin" src="input/row05.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row06_google_ads_pmax_square_1200x1200.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 6</span>
+              <span class="plat">Google Ads | 1200x1200 | Square</span></div>
+            <p class="headline">Commercial Exteriors, Covered</p>
+            
+            <p class="meta">1200×1200 · 406 KB · 50.0s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Professional exterior painting crews delivering flawless coverage on every commercial project, big or small. Planning a commercial repaint? Get in touch for your free estimate!</p>
+              <img class="thumbin" src="input/row06.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row07_meta_feed_portrait_1080x1350.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 7</span>
+              <span class="plat">Meta | 1080x1350 | Portrait</span></div>
+            <p class="headline">A Fresh Finish That Lasts</p>
+            <p class="sub">Careful prep. Precise exterior painting.</p>
+            <p class="meta">1080×1350 · 326 KB · 27.1s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Careful prep and precise painting give your home&#x27;s exterior a fresh, long-lasting finish. Ready for a new look? Book your free estimate today!</p>
+              <img class="thumbin" src="input/row07.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row08_google_ads_pmax_portrait_1200x1500.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 8</span>
+              <span class="plat">Google Ads | 1200x1500 | Portrait</span></div>
+            <p class="headline">Keep Cool All Season</p>
+            
+            <p class="meta">1200×1500 · 563 KB · 43.3s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Reliable outdoor AC units keep your home cool and comfortable all season long. Time for a system checkup? Contact us to schedule your HVAC service!</p>
+              <img class="thumbin" src="input/row08.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row09_meta_facebook_landscape_1200x630.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 9</span>
+              <span class="plat">Meta | 1200x630 | Landscape</span></div>
+            <p class="headline">Better Airflow Starts with Proper Ductwork</p>
+            <p class="sub">For a more efficient system throughout your home</p>
+            <p class="meta">1200×630 · 194 KB · 36.1s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Properly installed ductwork means better airflow and a more efficient system throughout your home. Need ductwork service? Contact us today!</p>
+              <img class="thumbin" src="input/row09.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row10_meta_feed_square_1080x1080.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 10</span>
+              <span class="plat">Meta | 1080x1080 | Square</span></div>
+            <p class="headline">Cooling Starts With Precision</p>
+            <p class="sub">Refrigerant checks help your system run efficiently</p>
+            <p class="meta">1080×1080 · 281 KB · 47.6s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Precise refrigerant checks keep your cooling system running efficiently when you need it most. Notice your AC isn&#x27;t cooling like it should? Schedule a service call today!</p>
+              <img class="thumbin" src="input/row10.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row11_google_ads_pmax_landscape_1200x628.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 11</span>
+              <span class="plat">Google Ads | 1200x628 | Landscape</span></div>
+            <p class="headline">Catch Ductwork Issues Early</p>
+            <p class="sub">Help keep your system running smoothly</p>
+            <p class="meta">1200×628 · 183 KB · 31.8s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Thorough ductwork inspections help catch issues early and keep your system running smoothly. Ready for a tune-up? Contact us to book your HVAC service!</p>
+              <img class="thumbin" src="input/row11.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row12_google_business_profile_photo_1080x1080.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 12</span>
+              <span class="plat">GBP | 1080x1080 | Square</span></div>
+            <p class="headline">Skilled Hands. Lasting Protection</p>
+            
+            <p class="meta">1080×1080 · 475 KB · 192.9s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Quality roofing starts with skilled hands and the right materials for lasting protection. Noticing wear on your roof? Contact us for a free inspection today!</p>
+              <img class="thumbin" src="input/row12.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row13_meta_story_reel_1080x1920.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 13</span>
+              <span class="plat">Meta | 1080x1920 | Story/Reel</span></div>
+            <p class="headline">A Lasting Roof, Crafted with Care</p>
+            
+            <p class="meta">1080×1920 · 770 KB · 441.2s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">From historic homes to modern builds, our roofing crew handles every replacement with care and precision. Ready for a roof that lasts? Get your free estimate today!</p>
+              <img class="thumbin" src="input/row13.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row14_google_ads_pmax_square_1200x1200.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 14</span>
+              <span class="plat">Google Ads | 1200x1200 | Square</span></div>
+            <p class="headline">Keep the Elements Out</p>
+            <p class="sub">Efficient roof repairs and replacements, rain or shine</p>
+            <p class="meta">1200×1200 · 401 KB · 219.1s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Our roofing team works efficiently to keep your home protected from the elements, rain or shine. Need a roof repair or replacement? Reach out for a free quote!</p>
+              <img class="thumbin" src="input/row14.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row15_meta_feed_portrait_1080x1350.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 15</span>
+              <span class="plat">Meta | 1080x1350 | Portrait</span></div>
+            <p class="headline">Thorough care, gently done</p>
+            
+            <p class="meta">1080×1350 · 236 KB · 57.5s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Modern equipment and a gentle touch make every visit comfortable and thorough. Due for a checkup? Schedule your appointment with us today!</p>
+              <img class="thumbin" src="input/row15.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row16_google_ads_pmax_portrait_1200x1500.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 16</span>
+              <span class="plat">Google Ads | 1200x1500 | Portrait</span></div>
+            <p class="headline">Modern Care, Every Stage</p>
+            
+            <p class="meta">1200×1500 · 300 KB · 117.4s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">A clean, modern practice equipped for every stage of your dental care. Ready to prioritize your smile? Book your visit today!</p>
+              <img class="thumbin" src="input/row16.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row17_meta_facebook_landscape_1200x630.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 17</span>
+              <span class="plat">Meta | 1200x630 | Landscape</span></div>
+            <p class="headline">Care That Puts You at Ease</p>
+            <p class="sub">Clear communication at every visit</p>
+            <p class="meta">1200×630 · 200 KB · 99.5s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Personalized care and clear communication make every dental visit stress-free. Looking for a dentist you can trust? Schedule your appointment today!</p>
+              <img class="thumbin" src="input/row17.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row18_meta_feed_square_1080x1080.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 18</span>
+              <span class="plat">Meta | 1080x1080 | Square</span></div>
+            <p class="headline">Care in every curve</p>
+            
+            <p class="meta">1080×1080 · 308 KB · 120.6s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Every inch gets attention, from foam wash to a showroom shine. Ready to give your car the detail it deserves? Book your appointment today!</p>
+              <img class="thumbin" src="input/row18.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row19_google_ads_pmax_landscape_1200x628.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 19</span>
+              <span class="plat">Google Ads | 1200x628 | Landscape</span></div>
+            <p class="headline">Spotless, By Hand</p>
+            
+            <p class="meta">1200×628 · 254 KB · 100.4s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Careful, hands-on cleaning gets every window and panel spotless. Want your car looking its best? Schedule a detail with us today!</p>
+              <img class="thumbin" src="input/row19.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row20_google_business_profile_photo_1080x1080.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 20</span>
+              <span class="plat">GBP | 1080x1080 | Square</span></div>
+            <p class="headline">Leave Grime Behind</p>
+            
+            <p class="meta">1080×1080 · 377 KB · 143.3s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">A thorough wash gets rid of grime and leaves your car looking brand new. Ready for a clean ride? Stop by for a wash today!</p>
+              <img class="thumbin" src="input/row20.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row21_meta_story_reel_1080x1920.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 21</span>
+              <span class="plat">Meta | 1080x1920 | Story/Reel</span></div>
+            <p class="headline">Deep clean. Gentle touch</p>
+            
+            <p class="meta">1080×1920 · 323 KB · 110.7s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Hand washing and foam give your car&#x27;s exterior a deep clean without the scratches. Time for a wash? Visit us today!</p>
+              <img class="thumbin" src="input/row21.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row22_google_ads_pmax_square_1200x1200.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 22</span>
+              <span class="plat">Google Ads | 1200x1200 | Square</span></div>
+            <p class="headline">Quick Clean. Sharp Finish</p>
+            
+            <p class="meta">1200×1200 · 556 KB · 122.0s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Fast, thorough exterior washes that keep your car looking sharp between details. Need a quick clean? Swing by today!</p>
+              <img class="thumbin" src="input/row22.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row23_meta_feed_portrait_1080x1350.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 23</span>
+              <span class="plat">Meta | 1080x1350 | Portrait</span></div>
+            <p class="headline">Laundry, made easy</p>
+            <p class="sub">From quick loads to big ones</p>
+            <p class="meta">1080×1350 · 349 KB · 146.7s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">A bright, easy space to get your laundry done right, whether it&#x27;s a quick load or a big one. Need a place to wash? Stop in today!</p>
+              <img class="thumbin" src="input/row23.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row24_google_ads_pmax_portrait_1200x1500.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 24</span>
+              <span class="plat">Google Ads | 1200x1500 | Portrait</span></div>
+            <p class="headline">Big Loads, Made Simple</p>
+            
+            <p class="meta">1200×1500 · 421 KB · 106.0s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Reliable, high-capacity machines make laundry day fast and simple. Ready for cleaner clothes without the hassle? Visit us today!</p>
+              <img class="thumbin" src="input/row24.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row25_meta_facebook_landscape_1200x630.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 25</span>
+              <span class="plat">Meta | 1200x630 | Landscape</span></div>
+            <p class="headline">A Deeper Kind of Clean</p>
+            
+            <p class="meta">1200×630 · 212 KB · 117.7s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Thorough vacuuming and sanitizing leave every room fresh and spotless. Ready for a deeper clean? Book your cleaning service today!</p>
+              <img class="thumbin" src="input/row25.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row26_meta_feed_square_1080x1080.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 26</span>
+              <span class="plat">Meta | 1080x1080 | Square</span></div>
+            <p class="headline">Sparkle, Down to the Details</p>
+            
+            <p class="meta">1080×1080 · 167 KB · 74.3s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Detail-oriented cleaning gets bathrooms and surfaces sparkling. Need your home refreshed? Schedule a cleaning today!</p>
+              <img class="thumbin" src="input/row26.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row27_google_ads_pmax_landscape_1200x628.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 27</span>
+              <span class="plat">Google Ads | 1200x628 | Landscape</span></div>
+            <p class="headline">Clear Views. Brighter Spaces</p>
+            
+            <p class="meta">1200×628 · 197 KB · 180.2s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Streak-free window cleaning that brightens up any space, inside and out. Ready for a clearer view? Contact us for a quote today!</p>
+              <img class="thumbin" src="input/row27.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row28_google_business_profile_photo_1080x1080.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 28</span>
+              <span class="plat">GBP | 1080x1080 | Square</span></div>
+            <p class="headline">Precision Keeps Things Running</p>
+            
+            <p class="meta">1080×1080 · 278 KB · 99.1s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Precise pipe work and the right tools keep your heating and plumbing systems running smoothly. Dealing with a leak or repair? Call us today!</p>
+              <img class="thumbin" src="input/row28.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row29_meta_story_reel_1080x1920.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 29</span>
+              <span class="plat">Meta | 1080x1920 | Story/Reel</span></div>
+            <p class="headline">Skilled hands. The right wrench</p>
+            <p class="sub">Plumbing problems solved fast</p>
+            <p class="meta">1080×1920 · 415 KB · 118.8s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Skilled hands and the right wrench solve plumbing problems fast. Need a reliable plumber? Reach out for service today!</p>
+              <img class="thumbin" src="input/row29.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row30_google_ads_pmax_square_1200x1200.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 30</span>
+              <span class="plat">Google Ads | 1200x1200 | Square</span></div>
+            <p class="headline">Keep Your Lawn Looking Sharp</p>
+            
+            <p class="meta">1200×1200 · 400 KB · 129.6s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Regular mowing keeps lawns looking neat and healthy all season long. Ready for a well-kept yard? Schedule lawn care today!</p>
+              <img class="thumbin" src="input/row30.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row31_meta_feed_portrait_1080x1350.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 31</span>
+              <span class="plat">Meta | 1080x1350 | Portrait</span></div>
+            <p class="headline">Clean edges. Sharper curb appeal</p>
+            
+            <p class="meta">1080×1350 · 560 KB · 180.4s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Clean edges and freshly cut grass make all the difference in curb appeal. Want your lawn looking sharp? Book a visit today!</p>
+              <img class="thumbin" src="input/row31.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row32_google_ads_pmax_portrait_1200x1500.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 32</span>
+              <span class="plat">Google Ads | 1200x1500 | Portrait</span></div>
+            <p class="headline">Wiring, handled with precision</p>
+            
+            <p class="meta">1200×1500 · 341 KB · 93.3s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Safe, precise repairs keep your home&#x27;s electrical system running the way it should. Got a wiring issue? Call an electrician you can trust today!</p>
+              <img class="thumbin" src="input/row32.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row33_meta_facebook_landscape_1200x630.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 33</span>
+              <span class="plat">Meta | 1200x630 | Landscape</span></div>
+            <p class="headline">Solar, installed with precision</p>
+            
+            <p class="meta">1200×630 · 178 KB · 118.0s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">From wiring to solar installations, our electricians handle it with safety and precision. Thinking about an upgrade? Contact us for a free estimate!</p>
+              <img class="thumbin" src="input/row33.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row34_meta_feed_square_1080x1080.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 34</span>
+              <span class="plat">Meta | 1080x1080 | Square</span></div>
+            <p class="headline">Safety Starts Underneath</p>
+            <p class="sub">Thorough inspections. Honest repairs.</p>
+            <p class="meta">1080×1080 · 437 KB · 109.7s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Thorough inspections and honest repairs keep your car running safely on the road. Need a checkup? Bring your car in today!</p>
+              <img class="thumbin" src="input/row34.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row35_google_ads_pmax_landscape_1200x628.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 35</span>
+              <span class="plat">Google Ads | 1200x628 | Landscape</span></div>
+            <p class="headline">Find the Problem. Fix It Fast</p>
+            
+            <p class="meta">1200×628 · 174 KB · 87.4s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Hands-on diagnostics and repair work get to the root of the problem fast. Car acting up? Schedule a repair today!</p>
+              <img class="thumbin" src="input/row35.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row36_google_business_profile_photo_1080x1080.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 36</span>
+              <span class="plat">GBP | 1080x1080 | Square</span></div>
+            <p class="headline">Oil Changes for the Long Haul</p>
+            
+            <p class="meta">1080×1080 · 189 KB · 84.1s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Routine oil changes keep your engine running smoothly for the long haul. Time for a service? Book your appointment today!</p>
+              <img class="thumbin" src="input/row36.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row37_meta_story_reel_1080x1920.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 37</span>
+              <span class="plat">Meta | 1080x1920 | Story/Reel</span></div>
+            <p class="headline">Fast Tire Service</p>
+            
+            <p class="meta">1080×1920 · 424 KB · 121.6s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Fast, reliable tire service to keep you safely on the road. Need a tire changed or repaired? Stop in today!</p>
+              <img class="thumbin" src="input/row37.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row38_google_ads_pmax_square_1200x1200.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 38</span>
+              <span class="plat">Google Ads | 1200x1200 | Square</span></div>
+            <p class="headline">Your Fix-It List, Handled</p>
+            
+            <p class="meta">1200×1200 · 302 KB · 98.9s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">From window frames to small repairs, no job is too big or too small. Got a to-do list? Call your local handyman today!</p>
+              <img class="thumbin" src="input/row38.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row39_meta_feed_portrait_1080x1350.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 39</span>
+              <span class="plat">Meta | 1080x1350 | Portrait</span></div>
+            <p class="headline">Every Fix Gets Full Attention</p>
+            
+            <p class="meta">1080×1350 · 346 KB · 71.1s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Careful, precise work on every repair, big or small. Need something fixed around the house? Contact us today!</p>
+              <img class="thumbin" src="input/row39.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row40_google_ads_pmax_portrait_1200x1500.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 40</span>
+              <span class="plat">Google Ads | 1200x1500 | Portrait</span></div>
+            <p class="headline">Hinges fixed. List shortened</p>
+            
+            <p class="meta">1200×1500 · 347 KB · 79.5s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Reliable fixes for hinges, frames, and everything in between. Ready to check something off your list? Reach out today!</p>
+              <img class="thumbin" src="input/row40.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row41_meta_facebook_landscape_1200x630.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 41</span>
+              <span class="plat">Meta | 1200x630 | Landscape</span></div>
+            <p class="headline">Moving Day, Handled With Care</p>
+            
+            <p class="meta">1200×630 · 265 KB · 216.7s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Careful handling and dependable service make moving day easier. Planning a move? Get your free moving quote today!</p>
+              <img class="thumbin" src="input/row41.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row42_meta_feed_square_1080x1080.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 42</span>
+              <span class="plat">Meta | 1080x1080 | Square</span></div>
+            <p class="headline">Care in Every Carry</p>
+            
+            <p class="meta">1080×1080 · 223 KB · 145.4s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Our crew handles furniture with care so nothing gets damaged in transit. Ready to book your move? Contact us today!</p>
+              <img class="thumbin" src="input/row42.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row43_google_ads_pmax_landscape_1200x628.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 43</span>
+              <span class="plat">Google Ads | 1200x628 | Landscape</span></div>
+            <p class="headline">Your Belongings, Treated Like Our Own</p>
+            
+            <p class="meta">1200×628 · 164 KB · 110.8s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Friendly, uniformed movers who treat your belongings like their own. Need help with your next move? Schedule with us today!</p>
+              <img class="thumbin" src="input/row43.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row44_google_business_profile_photo_1080x1080.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 44</span>
+              <span class="plat">GBP | 1080x1080 | Square</span></div>
+            <p class="headline">Skilled Crews, Careful Plans</p>
+            <p class="sub">Safe and on schedule</p>
+            <p class="meta">1080×1080 · 341 KB · 118.9s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Skilled crews and careful planning bring every build to life safely and on schedule. Have a project in mind? Contact us for a consultation today!</p>
+              <img class="thumbin" src="input/row44.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row45_meta_story_reel_1080x1920.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 45</span>
+              <span class="plat">Meta | 1080x1920 | Story/Reel</span></div>
+            <p class="headline">Built on care</p>
+            
+            <p class="meta">1080×1920 · 480 KB · 93.6s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">From framing to finishing touches, our team handles renovations with care. Ready to start your project? Get a free quote today!</p>
+              <img class="thumbin" src="input/row45.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row46_google_ads_pmax_square_1200x1200.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 46</span>
+              <span class="plat">Google Ads | 1200x1200 | Square</span></div>
+            <p class="headline">A Clean Finish Starts with Prep</p>
+            <p class="sub">Careful teamwork behind every professional paint job</p>
+            <p class="meta">1200×1200 · 317 KB · 98.3s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Careful prep and teamwork deliver a clean, professional paint job every time. Ready to refresh your space? Book your free estimate today!</p>
+              <img class="thumbin" src="input/row46.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row47_meta_feed_portrait_1080x1350.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 47</span>
+              <span class="plat">Meta | 1080x1350 | Portrait</span></div>
+            <p class="headline">Change the Color. Transform the Room</p>
+            
+            <p class="meta">1080×1350 · 270 KB · 57.8s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">A fresh coat of paint can transform any room. Thinking about a color change? Contact us for a free quote today!</p>
+              <img class="thumbin" src="input/row47.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row48_google_ads_pmax_portrait_1200x1500.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 48</span>
+              <span class="plat">Google Ads | 1200x1500 | Portrait</span></div>
+            <p class="headline">Smooth Coverage. A Fresh New Look</p>
+            
+            <p class="meta">1200×1500 · 359 KB · 274.6s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Smooth, even coverage that makes any room feel brand new. Ready for a fresh look? Schedule your painting service today!</p>
+              <img class="thumbin" src="input/row48.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row49_meta_facebook_landscape_1200x630.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 49</span>
+              <span class="plat">Meta | 1200x630 | Landscape</span></div>
+            <p class="headline">AC trouble meets skilled hands</p>
+            
+            <p class="meta">1200×630 · 253 KB · 232.3s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Skilled technicians diagnose and repair AC units to keep your space comfortable. Having cooling issues? Schedule a repair today!</p>
+              <img class="thumbin" src="input/row49.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article>
+        <article class="card ok">
+          <div class="stage"><img src="output/row50_meta_feed_square_1080x1080.jpg" alt="Generated ad" loading="lazy" /></div>
+          <div class="body">
+            <div class="row"><span class="chip">row 50</span>
+              <span class="plat">Meta | 1080x1080 | Square</span></div>
+            <p class="headline">Target Pests. Protect Your Yard</p>
+            <p class="sub">Focused spraying for lawns, plants and shrubs</p>
+            <p class="meta">1080×1080 · 280 KB · 97.6s</p>
+            
+            <details><summary>Source text &amp; input</summary>
+              <p class="src">Targeted spraying helps protect your lawn, plants, and shrubs from pests and disease. Noticing signs of trouble in your yard? Contact us for a treatment plan today!</p>
+              <img class="thumbin" src="input/row50.jpg" alt="Source image" loading="lazy" />
+            </details>
+          </div>
+        </article></div>
+</body></html>

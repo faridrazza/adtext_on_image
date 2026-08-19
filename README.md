@@ -61,6 +61,11 @@ Open `.env` and set `OPENAI_API_KEY`. Then start it:
 |---|---|
 | Demo page | http://127.0.0.1:8000/ |
 | API docs (try it in the browser) | http://127.0.0.1:8000/docs |
+| Health check | http://127.0.0.1:8000/api/v1/health |
+| Platforms, sizes and limits as JSON | http://127.0.0.1:8000/api/v1/capabilities |
+
+The demo page is a convenience for local testing only; the API has no dependency
+on it. See **Integrating from a real front-end** below for production use.
 
 ---
 
@@ -71,18 +76,42 @@ POST http://127.0.0.1:8000/api/v1/ad-images/render
 Body type: form-data
 ```
 
-| Field | Required | What to send |
-|---|---|---|
-| `image` | **yes** | The photo file — JPEG, PNG or WebP |
-| `source_text` | **yes** | Your text about the business. Minimum 5 words |
-| `platform` | **yes** | `google_ads_pmax` · `meta` · `google_business_profile` · `website` |
-| `asset_type` | **yes** | The slot — see the table below |
-| `width` | no | Custom width. Only if you want to override the platform size |
-| `height` | no | Custom height. Must be sent together with `width` |
-| `quality` | no | `low` (default) · `medium` · `high` · `auto` |
+These seven fields are the entire contract. Anything else you send is ignored.
 
-You do **not** need to send the size. The backend already knows that
-`meta` + `feed_square` means 1080×1080.
+| Field | Required | Type | What to send |
+|---|---|---|---|
+| `image` | **yes** | **file part** | The photo — JPEG, PNG or WebP. Max 30 MB (31,457,280 bytes) |
+| `source_text` | **yes** | text | Your text about the business. Minimum 5 words |
+| `platform` | **yes** | text | `google_ads_pmax` · `meta` · `google_business_profile` · `website` |
+| `asset_type` | **yes** | text | The slot — see the table below. Must belong to that platform |
+| `width` | no | integer | Custom width, 64–3840. Must be sent **with** `height` |
+| `height` | no | integer | Custom height, 64–3840. Must be sent **with** `width` |
+| `quality` | no | text | `low` (default) · `medium` · `high` · `auto` |
+
+### Does it accept dimensions?
+
+Yes — `width` and `height`, and they are **optional overrides, not inputs you
+have to supply**. The backend already knows `meta` + `feed_square` means
+1080×1080, so send neither field and you get the published size.
+
+Three rules, all enforced before any AI call:
+
+- **Both or neither.** Sending only `width` → `422 invalid_request`,
+  *"Provide both width and height to override the platform default, or neither
+  to use it."*
+- **64 to 3840 pixels**, each side. Outside that → `422 invalid_request`,
+  *"Dimensions must be between 64 and 3840 pixels."*
+- **An override wins over the platform size**, and is only advisory-checked
+  against it. Going below a platform minimum does not fail the request — it
+  adds a line to `warnings` and renders anyway.
+
+The response tells you which happened: `asset.dimension_source` is
+`platform_default` when you sent nothing, `request` when you overrode it.
+
+One thing to expect in `warnings`: `gpt-image-2` only emits sizes that are
+multiples of 16, so 1080×1080 is rendered at 1088×1088 and resampled back down
+to exactly 1080×1080 by Pillow. The output is always the size you asked for;
+the warning is telling you a resample happened.
 
 ### Using Postman
 
@@ -112,6 +141,100 @@ curl -X POST http://127.0.0.1:8000/api/v1/ad-images/render \
   -F "platform=meta" \
   -F "asset_type=feed_square"
 ```
+
+---
+
+## Integrating from a real front-end
+
+Read this before wiring the endpoint into a production UI. Every statement below
+was checked against the running server.
+
+### There is exactly one way to send the image
+
+`multipart/form-data`, with `image` as a **real file part**. That is the only
+accepted transport. These all fail with `422`:
+
+| What a front-end might try | Result |
+|---|---|
+| `multipart/form-data` with a file part | **the only supported way** |
+| JSON body with a base64 `image` string | 422 — all four fields report *"Field required"* |
+| `image` as a base64 **text** field in the form | 422 — *"Expected UploadFile, received: `<class 'str'>`"* |
+| `image` as a `data:image/jpeg;base64,...` URI | 422 — same error |
+| An `image_url` field pointing at a remote file | 422 — *"Field required"* on `image`; the field is ignored |
+
+So the browser must hold the actual bytes — a `File` from an `<input>`, or a
+`Blob` you fetched yourself. The API will not download an image for you.
+
+### The one mistake that will bite you
+
+**A blob appended without a filename is rejected.** Starlette only treats a
+multipart part as a file when the part carries a `filename`; without one it
+arrives as a plain string and fails validation:
+
+```js
+// 422 - "Expected UploadFile, received: <class 'str'>"
+form.append("image", blob);
+
+// correct - the third argument is what makes it a file part
+form.append("image", blob, "photo.jpg");
+```
+
+With an `<input type="file">` the filename comes along automatically, so this
+only hits you when you build the blob yourself — canvas exports, cropped
+images, fetched URLs, pasted clipboard data.
+
+### Working browser call
+
+```js
+const form = new FormData();
+form.append("image", file, file.name || "photo.jpg");
+form.append("source_text", text);
+form.append("platform", "meta");
+form.append("asset_type", "feed_square");
+// optional: form.append("width", "1080"); form.append("height", "1080");
+
+const res = await fetch("http://127.0.0.1:8000/api/v1/ad-images/render", {
+  method: "POST",
+  body: form,            // do NOT set Content-Type yourself - the browser
+});                      // adds the multipart boundary
+
+const data = await res.json();
+if (!res.ok) { /* see the Errors section - two different shapes */ }
+img.src = `data:${data.image.media_type};base64,${data.image.b64}`;
+```
+
+### Four things that will surprise you in production
+
+1. **A request takes about 90 seconds** at `quality=low`, and longer above it.
+   A measured run returned `HTTP 200` in **1m30s**. Anything sitting between the
+   browser and the app — nginx, an ALB, Cloudflare, an API gateway — usually
+   times out at 30 or 60 seconds by default and will cut the request off. Raise
+   those read timeouts, and give the UI a real progress state rather than a
+   spinner that looks hung.
+2. **The image comes back as base64 inside the JSON**, not as a binary body. A
+   1080x1080 `low` render is about **630 KB of base64** in a ~617 KB response.
+   That is fine to display with a `data:` URI, but do not log the response and
+   do not keep it in serialised front-end state.
+3. **The whole upload lands in memory before the size check runs.** Starlette
+   spools a part over 1 MB to a temp file, but the route then calls
+   `await image.read()`, which pulls all of it back into a single `bytes`
+   object; only after that is the 30 MB ceiling applied. So the limit protects
+   the pipeline, not the process. Cap the file size in the UI as well, and set
+   a matching client-body limit on your proxy.
+4. **CORS is wide open and there is no authentication.** `cors_allow_origins`
+   defaults to `*`; a preflight from any origin returns `200` with
+   `access-control-allow-origin: *`. Anyone who can reach the URL can spend your
+   OpenAI credit. Put it behind your own auth, and set `CORS_ALLOW_ORIGINS` in
+   `.env` to your real front-end origin before it ships.
+
+### Things that are safely tolerated
+
+- **Extra form fields are ignored**, not rejected — you can send fields the API
+  does not know about without breaking the request.
+- **The `Content-Type` of the file part does not matter.** A JPEG sent as
+  `application/octet-stream` is accepted; the format is detected from the bytes
+  by Pillow, not from the header.
+- **A wrong HTTP method** returns a clean `405`, not a crash.
 
 ---
 
@@ -157,7 +280,15 @@ image and which part of your text justifies it — so you can check the claim
 without having to read the picture.
 
 `warnings` never stops the request. It reports things worth knowing, such as
-your chosen size being below a platform minimum.
+your chosen size being below a platform minimum, or the render being resampled
+from a multiple-of-16 size back to the exact size you asked for.
+
+`alt_text` is `null` for every platform except `website`, whose slots require
+it. When present it is the first sentence of your `source_text`, trimmed to 125
+characters — copied verbatim, never invented.
+
+`asset.dimension_source` is `platform_default` or `request`, so you can tell
+whether your `width`/`height` override was applied.
 
 ---
 
@@ -185,23 +316,53 @@ formats and file-size limits, so a front-end never has to hardcode sizes.
 
 ## Errors
 
-Every error looks the same:
+**There are two error shapes, not one.** A front-end has to handle both.
+
+### 1. Application errors — `{ code, message, details }`
+
+Raised by the pipeline itself. `code` is stable and safe to branch on.
 
 ```json
-{ "code": "insufficient_source_text", "message": "...", "details": {} }
+{ "code": "insufficient_source_text",
+  "message": "source_text contains only 2 words, which is not enough to write a headline without inventing information.",
+  "details": { "word_count": 2, "minimum": 5 } }
 ```
 
 | Code | Status | Meaning |
 |---|---|---|
-| `invalid_request` | 422 | Sent only one of width/height, or a size out of range |
-| `invalid_image` | 422 | File missing, unreadable, wrong type, or too big |
+| `invalid_request` | 422 | Sent only one of width/height, or a size outside 64–3840 |
+| `invalid_image` | 422 | File empty, unreadable, not JPEG/PNG/WebP, or over 30 MB |
 | `unsupported_asset` | 422 | Asset type not valid for that platform, or a logo slot |
 | `insufficient_source_text` | 422 | Fewer than 5 words — not enough to write from |
 | `copy_generation_failed` | 502 | The headline broke the accuracy rules twice |
 | `rendering_failed` | 502 | The image model failed |
 | `configuration_error` | 500 | `OPENAI_API_KEY` is not set |
 
-The 422s all happen **before** any AI call, so a bad request costs nothing.
+`unsupported_asset` and `invalid_image` put useful data in `details` —
+`valid_asset_types` for the platform, or the format that was detected.
+
+### 2. Validation errors — `{ "detail": [ ... ] }`
+
+FastAPI rejects these before your code runs, so **there is no `code` field**.
+Reading `error.code` on one of these gives you `undefined`.
+
+```json
+{ "detail": [ { "type": "missing", "loc": ["body", "image"],
+               "msg": "Field required", "input": null } ] }
+```
+
+You get this shape when a required field is absent, when `platform`,
+`asset_type` or `quality` is not one of the allowed values, or when `image`
+arrives as a string instead of a file part. Also `405 {"detail": "Method Not
+Allowed"}` for the wrong HTTP method.
+
+Defensive read: `body.code ?? body.detail?.[0]?.msg ?? "Request failed"`.
+
+### Cost
+
+Every 422 above happens **before** either AI call, so a bad request costs
+nothing. Only `copy_generation_failed` and `rendering_failed` (502) come after
+money has been spent.
 
 ---
 
@@ -237,8 +398,8 @@ exact match with your original cannot be guaranteed. Every response says this in
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-144 tests. Both AI calls are faked, so the suite is free to run and needs no
-API key.
+158 tests, all passing. Both AI calls are faked, so the suite is free to run
+and needs no API key.
 
 ---
 
