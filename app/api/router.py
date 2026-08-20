@@ -174,41 +174,41 @@ async def render_ad_image(
             "behaviour when no brand kit applies."
         ),
     ),
-    headline: str | None = Form(
-        None,
+    headline: str = Form(
+        ...,
         description=(
-            "Words to set, chosen by a person: an option from "
-            "/ad-images/copy-options, an edit of one, or their own. Sending "
-            "this skips the copywriter and renders these words as they are. "
-            "Omit it to have the copy written for you."
+            "The words to set: an option from /ad-images/copy-options, an edit "
+            "of one, or a person's own. Required -- this endpoint renders "
+            "words, it does not write them. Ask /ad-images/copy-options for "
+            "those first."
         ),
     ),
     subheadline: str | None = Form(
         None,
         description=(
-            "Optional supporting line to set beneath the headline. Only "
-            "accepted together with headline."
+            "Supporting line, set smaller beneath the headline. Optional "
+            "because the copywriter returns one only where it adds something "
+            "the headline cannot carry -- so an option may legitimately have "
+            "none. Send it whenever the option you are rendering has one."
         ),
     ),
     placement: Placement | None = Form(
         None,
         description=(
-            "Where the words sit, from the chosen option. Only accepted "
-            "together with headline; omit it and the image model finds the "
+            "Where the words sit. Send the placement that came with the "
+            "option you are rendering. Omit it and the image model finds the "
             "clear space itself."
         ),
     ),
     controller: AdImageController = Depends(get_controller),
 ) -> RenderResponse:
-    """Set approved ad text over the supplied image. Text only -- no
+    """Set the supplied ad text over the supplied image. Text only -- no
     call-to-action, logo, icon or graphic is added.
 
-    Two ways to use it. Send ``source_text`` and no ``headline``, and the
-    copywriter reads the photograph and that brief and decides the words. Send a
-    ``headline``
-    -- picked or edited by a person, typically from ``/ad-images/copy-options``
-    -- and the copywriter is skipped and those exact words are set. The
-    rendering itself is identical either way.
+    This endpoint renders words; it does not write them. ``headline`` is
+    required, and ``subheadline`` and ``placement`` come with it -- normally
+    straight from an option returned by ``/ad-images/copy-options``, edited or
+    replaced by a person first if they wish.
 
     Output dimensions are derived from ``platform`` and ``asset_type``; supply
     ``width`` and ``height`` only to deliberately override them.

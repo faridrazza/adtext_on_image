@@ -101,7 +101,12 @@ class CopyOption(BaseModel):
 
 
 class CopyOptionsResponse(BaseModel):
-    """Stage 1 on its own: the words, with no image rendered."""
+    """Stage 1 on its own: the words, with no image rendered.
+
+    Deliberately narrow. This call decides what the ad should say; the size it
+    will be published at, the file it will become and the slot it belongs to
+    are all facts about the render, and the render response carries them.
+    """
 
     options: list[CopyOption] = Field(
         description=(
@@ -109,8 +114,6 @@ class CopyOptionsResponse(BaseModel):
             "or writes their own, and sends the result to the render endpoint."
         )
     )
-    source_image: SourceImageInfo
-    asset: AssetInfo
     copy_model: str
     headline_word_budget: int = Field(
         description="Headline word limit for this slot, for a UI counter."

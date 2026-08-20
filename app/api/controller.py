@@ -207,20 +207,6 @@ class AdImageController:
                 )
                 for option in chosen.options
             ],
-            source_image=SourceImageInfo(
-                width=prepared.source.width,
-                height=prepared.source.height,
-                image_format=prepared.source.image_format,
-                size_bytes=prepared.source.size_bytes,
-            ),
-            asset=AssetInfo(
-                platform=platform.value,
-                asset_type=asset_type.value,
-                label=spec.label,
-                output_width=prepared.width,
-                output_height=prepared.height,
-                dimension_source=prepared.dimension_source,
-            ),
             copy_model=self._copy_model.model,
             headline_word_budget=headline_words,
             support_word_budget=support_words,
@@ -258,6 +244,13 @@ class AdImageController:
         # A presence check only -- the headline is validated further down, but
         # whether one was sent decides if the brief is load-bearing here.
         caller_wrote_the_words = bool(headline and headline.strip())
+        # The route requires a headline. Reaching here with a blank one means
+        # the field was sent empty, which is a mistake worth naming rather than
+        # quietly falling through to the copywriter.
+        if headline is not None and not headline.strip():
+            raise InvalidRequestError(
+                "headline was sent but is empty. Send the words to set.",
+            )
 
         # 1-6. Slot, size, upload limits, source text and the decoded image.
         #      Shared with write_copy_options so the two cannot disagree.

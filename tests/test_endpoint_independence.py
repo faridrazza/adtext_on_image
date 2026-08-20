@@ -72,9 +72,9 @@ def test_copy_options_works_without_ever_rendering(client, stub_model):
 
 def test_render_before_options_is_fine(client):
     """Order is not a state machine. Render, then ask for options, then render."""
-    assert render_call(client, brief=BRIEF).status_code == 200
-    assert options_call(client).status_code == 200
     assert render_call(client, headline="Warmth That Stays").status_code == 200
+    assert options_call(client).status_code == 200
+    assert render_call(client, headline="Colour That Lasts").status_code == 200
 
 
 # --- nothing is carried between the two calls ------------------------------
@@ -112,6 +112,13 @@ def test_a_different_slot_may_be_sent_to_each_call(client):
     )
     assert render.status_code == 200
     assert render.json()["asset"]["platform"] == "google_ads_pmax"
+
+
+def test_a_render_still_works_when_the_brief_is_sent_too(client):
+    """Optional means optional -- sending it changes nothing about the words."""
+    response = render_call(client, brief=BRIEF, headline="Warmth That Stays")
+    assert response.status_code == 200
+    assert response.json()["ad_copy"]["headline"] == "Warmth That Stays"
 
 
 def test_the_render_never_sees_the_brief_from_the_options_call(client, stub_model):

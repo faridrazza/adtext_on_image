@@ -14,14 +14,24 @@ SOURCE_TEXT = (
 )
 
 
+# The render endpoint renders words; a headline is required on every call.
+DEFAULT_HEADLINE = "Fresh Colour, Flawless Finish"
+
+
 def post(client, *, image=None, **overrides):
-    """Post a render request. width/height are omitted unless asked for."""
+    """Post a render request. width/height are omitted unless asked for.
+
+    Sends `source_text` and a `headline` by default. Pass ``headline=None`` to
+    leave the field off entirely.
+    """
     data = {
         "source_text": SOURCE_TEXT,
         "platform": "meta",
         "asset_type": "feed_square",
+        "headline": DEFAULT_HEADLINE,
     }
     data.update(overrides)
+    data = {k: v for k, v in data.items() if v is not None}
     return client.post(
         ENDPOINT,
         files={"image": ("source.png", image or make_image(), "image/png")},
@@ -36,16 +46,14 @@ def test_health(client):
     assert client.get("/api/v1/health").json() == {"status": "ok"}
 
 
-def test_demo_console_is_served_at_the_root(client):
-    response = client.get("/")
-    assert response.status_code == 200
-    assert response.headers["content-type"].startswith("text/html")
-    assert "Ad Asset Bench" in response.text
+@pytest.mark.parametrize("path", ["/", "/studio"])
+def test_the_demo_console_is_served(client, path):
+    """One console, reachable at both paths.
 
-
-def test_studio_console_is_served(client):
-    """The two-step console: options, then a render of the chosen words."""
-    response = client.get("/studio")
+    The retired single-call console is no longer served: it posted no headline,
+    which the render endpoint now refuses.
+    """
+    response = client.get(path)
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
     assert "Ad Asset Studio" in response.text
@@ -171,10 +179,29 @@ def test_every_response_carries_the_rendering_notice(client):
     assert "generative image model" in post(client).json()["rendering_notice"]
 
 
-def test_source_text_reaches_the_copywriter(client, stub_copy):
+def test_the_copywriter_is_not_reachable_through_the_render_endpoint(
+    client, stub_copy
+):
+    """It renders words; /ad-images/copy-options writes them."""
     post(client)
-    assert stub_copy.calls == 1
-    assert stub_copy.last_source_text == SOURCE_TEXT
+    assert stub_copy.calls == 0
+    assert stub_copy.option_calls == 0
+
+
+def test_a_missing_headline_is_refused(client, stub_model, stub_copy):
+    response = post(client, headline=None)
+    assert response.status_code == 422
+    assert stub_model.calls == 0
+    assert stub_copy.calls == 0
+
+
+def test_an_empty_headline_is_refused(client, stub_model, stub_copy):
+    """Sent-but-blank is a mistake, not a request for the copywriter."""
+    response = post(client, headline="   ")
+    assert response.status_code == 422
+    assert response.json()["code"] == "invalid_request"
+    assert stub_model.calls == 0
+    assert stub_copy.calls == 0
 
 
 def test_source_text_never_reaches_the_image_model(client, stub_model):
@@ -187,20 +214,23 @@ def test_source_text_never_reaches_the_image_model(client, stub_model):
         assert fragment not in prompt
 
 
-def test_image_prompt_carries_only_the_approved_copy(client, stub_model, stub_copy):
-    stub_copy.headline = "Baked Before You Wake"
-    post(client)
+def test_image_prompt_carries_only_the_approved_copy(client, stub_model):
+    post(client, headline="Baked Before You Wake")
     assert '"Baked Before You Wake"' in stub_model.last_prompt
 
 
-def test_response_returns_the_approved_copy(client, stub_copy):
-    stub_copy.headline = "Baked Before You Wake"
-    body = post(client).json()
+def test_response_returns_the_words_that_were_set(client):
+    body = post(
+        client,
+        headline="Baked Before You Wake",
+        subheadline="Every morning",
+        placement="bottom_left",
+    ).json()
     assert body["ad_copy"]["headline"] == "Baked Before You Wake"
-    assert body["ad_copy"]["subheadline"] is None
+    assert body["ad_copy"]["subheadline"] == "Every morning"
     assert body["ad_copy"]["placement"] == "bottom_left"
-    assert body["ad_copy"]["source_support"]
-    assert body["copy_model"] == "stub-copy-model"
+    assert body["ad_copy"]["source_support"] == ""      # a person wrote them
+    assert body["copy_source"] == "caller"
 
 
 def test_alt_text_is_returned_only_where_the_platform_requires_it(client):
@@ -249,11 +279,20 @@ def test_asset_type_from_another_platform_is_refused(client):
 
 
 @pytest.mark.parametrize("text", ["   ", "Bakery open"])
-def test_insufficient_source_text_is_refused(client, stub_model, text):
-    response = post(client, source_text=text)
+def test_insufficient_source_text_is_refused_when_writing_copy(
+    client, stub_copy, text
+):
+    """The rule lives where copy is written: the options endpoint."""
+    response = post_options(client, source_text=text)
     assert response.status_code == 422
     assert response.json()["code"] == "insufficient_source_text"
-    assert stub_model.calls == 0  # never reaches the paid call
+    assert stub_copy.option_calls == 0  # never reaches the paid call
+
+
+@pytest.mark.parametrize("text", ["   ", "Bakery open"])
+def test_a_thin_brief_does_not_block_a_render(client, text):
+    """Nothing is written from it here, so its length cannot matter."""
+    assert post(client, source_text=text).status_code == 200
 
 
 def test_non_image_upload_is_refused(client, stub_model):
@@ -431,11 +470,17 @@ def test_copy_options_report_zero_support_budget_where_there_is_no_room(client):
     assert body["support_word_budget"] == 0
 
 
-def test_copy_options_echo_the_asset_and_size(client):
+def test_copy_options_returns_words_and_nothing_else(client):
+    """It writes copy. Sizes and file facts belong to the render response."""
     body = post_options(client).json()
-    assert body["asset"]["output_width"] == 1080
-    assert body["asset"]["output_height"] == 1080
-    assert body["asset"]["dimension_source"] == "platform_default"
+    assert set(body) == {
+        "options",
+        "copy_model",
+        "headline_word_budget",
+        "support_word_budget",
+        "alt_text",
+        "warnings",
+    }
 
 
 def test_copy_options_refuse_logo_slots(client, stub_copy):
@@ -477,12 +522,8 @@ def test_headline_from_the_caller_skips_the_copy_model(client, stub_copy):
     assert body["ad_copy"]["headline"] == "Warmth That Stays"
 
 
-def test_no_headline_still_uses_the_copy_model(client, stub_copy):
-    """The single-call flow is untouched."""
-    body = post(client).json()
-    assert stub_copy.calls == 1
-    assert body["copy_source"] == "model"
-    assert body["ad_copy"]["headline"] == "Fresh Colour, Flawless Finish"
+def test_every_render_reports_the_words_as_the_callers(client):
+    assert post(client).json()["copy_source"] == "caller"
 
 
 def test_the_callers_words_are_the_words_rendered(client, stub_model):
@@ -507,20 +548,18 @@ def test_caller_words_carry_no_source_support(client):
     assert body["ad_copy"]["source_support"] == ""
 
 
-def test_a_supporting_line_alone_is_refused(client, stub_model, stub_copy):
-    response = post(client, subheadline="Every winter")
+def test_a_supporting_line_alone_is_refused(client, stub_model):
+    """There is nothing for it to sit beneath."""
+    response = post(client, headline=None, subheadline="Every winter")
     assert response.status_code == 422
-    assert response.json()["code"] == "invalid_request"
     assert stub_model.calls == 0
-    assert stub_copy.calls == 0
 
 
-def test_a_placement_alone_is_refused(client, stub_model, stub_copy):
-    response = post(client, placement="top_right")
+def test_a_placement_alone_is_refused(client, stub_model):
+    """A region with no words to put in it."""
+    response = post(client, headline=None, placement="top_right")
     assert response.status_code == 422
-    assert response.json()["code"] == "invalid_request"
     assert stub_model.calls == 0
-    assert stub_copy.calls == 0
 
 
 def test_an_unknown_placement_is_refused(client, stub_model):
@@ -592,11 +631,10 @@ def test_an_oversized_supporting_line_is_refused(client, stub_model):
     assert stub_model.calls == 0
 
 
-def test_a_blank_headline_falls_back_to_the_copy_model(client, stub_copy):
-    """An empty form field is the same as not sending one."""
-    body = post(client, headline="   ").json()
-    assert stub_copy.calls == 1
-    assert body["copy_source"] == "model"
+def test_a_supporting_line_may_be_added_where_the_option_had_none(client, stub_model):
+    """Options often come back without one; a person may still want one."""
+    post(client, headline="Warmth That Stays", subheadline="Every winter")
+    assert 'beneath it: "Every winter"' in stub_model.last_prompt
 
 
 def test_caller_words_still_get_a_brand_kit_typeface(client, stub_model):
@@ -655,26 +693,11 @@ def test_a_chosen_headline_needs_no_brief(client, stub_copy):
 
 
 def test_no_brief_and_no_headline_is_refused(client, stub_model, stub_copy):
-    """Nothing to write from and nothing to set."""
+    """A render with neither is not a request at all."""
     response = post_no_brief(client)
     assert response.status_code == 422
-    assert response.json()["code"] == "insufficient_source_text"
     assert stub_model.calls == 0
     assert stub_copy.calls == 0
-
-
-def test_the_copywriter_still_demands_a_brief(client):
-    """Unchanged: the old error, for the old flow."""
-    response = post(client, source_text="Bakery open")
-    assert response.status_code == 422
-    assert response.json()["code"] == "insufficient_source_text"
-
-
-def test_a_thin_brief_is_tolerated_alongside_a_chosen_headline(client):
-    """Its length cannot matter -- nothing is generated from it."""
-    response = post(client, source_text="Bakery open", headline="Warmth That Stays")
-    assert response.status_code == 200
-    assert not any("not enough to write" in w for w in response.json()["warnings"])
 
 
 def test_no_brief_means_no_alt_text_and_no_complaint(client):
@@ -691,8 +714,8 @@ def test_no_brief_means_no_alt_text_and_no_complaint(client):
     assert not any("alt text" in w for w in body["warnings"])
 
 
-def test_the_single_call_flow_still_returns_alt_text(client):
-    """Unchanged since the first commit: a brief in, alt text out."""
+def test_a_brief_sent_with_the_words_still_yields_alt_text(client):
+    """The brief is optional, but sending it still quotes alt text from it."""
     body = post(client, platform="website", asset_type="hero").json()
     assert body["alt_text"]
 
