@@ -111,7 +111,7 @@
   label.lbl { font-size: 13px; font-weight: 600; }
   .hint { font-size: 12px; color: var(--ink-faint); }
 
-  textarea, input[type="number"], select {
+  textarea, input[type="number"], input[type="text"], select {
     width: 100%;
     padding: 9px 11px;
     border: 1px solid var(--rule-firm);
@@ -449,6 +449,17 @@
     </div>
 
     <div class="field">
+      <div class="field-head">
+        <span class="eyebrow">7 · Brand kit typeface</span>
+        <span class="hint">optional</span>
+      </div>
+      <input type="text" id="fontFamily" maxlength="40" autocomplete="off"
+             placeholder="Arial — leave blank to let the model choose"
+             aria-label="Brand kit typeface" />
+      <span class="hint" id="fontHint"></span>
+    </div>
+
+    <div class="field">
       <button class="go" id="go" type="submit" disabled>Render asset</button>
       <span class="blockers" id="blockers"></span>
     </div>
@@ -487,6 +498,7 @@
     sizeChips: $("sizeChips"), sizeGrid: $("sizeGrid"),
     width: $("width"), height: $("height"),
     quality: $("quality"),
+    fontFamily: $("fontFamily"), fontHint: $("fontHint"),
     go: $("go"), blockers: $("blockers"), form: $("form"),
     stage: $("stage"), report: $("report"), proofActions: $("proofActions"),
   };
@@ -630,6 +642,21 @@
     if (state.slot) renderSpec(state.slot);
   }
 
+  // Mirrors clean_font_family() on the server: a typeface name, nothing else.
+  const FONT_OK = /^[A-Za-z][A-Za-z0-9 .+&'-]*$/;
+
+  function fontProblem() {
+    // Collapse whitespace first, exactly as clean_font_family() does, so the
+    // two sides never disagree about the same input.
+    const font = el.fontFamily.value.trim().replace(/\s+/g, " ");
+    if (!font) return null;
+    if (font.length > 40) return "Typeface name is longer than 40 characters.";
+    if (!FONT_OK.test(font)) {
+      return "Typeface names use letters, digits, spaces and . ' - + & only.";
+    }
+    return null;
+  }
+
   function chosenSize() {
     if (state.size === "custom") {
       return [el.width.value, el.height.value];
@@ -683,6 +710,11 @@
     revalidate();
   });
 
+  el.fontFamily.addEventListener("input", () => {
+    el.fontHint.textContent = fontProblem() || "";
+    revalidate();
+  });
+
   [el.width, el.height].forEach((input) =>
     input.addEventListener("input", () => {
       if (state.slot) renderSpec(state.slot);
@@ -694,6 +726,7 @@
     if (!state.file) reasons.push("an image");
     if (words(el.text.value) < 5) reasons.push("at least 5 words of source text");
     if (!state.slot || !state.slot.accepts_text_overlay) reasons.push("a renderable asset slot");
+    if (fontProblem()) reasons.push("a valid typeface name");
 
     el.go.disabled = reasons.length > 0 || state.busy;
     el.blockers.textContent = reasons.length ? `Still needed: ${reasons.join(", ")}.` : "";
@@ -724,6 +757,8 @@
       body.append("width", size[0]);
       body.append("height", size[1]);
     }
+    const font = el.fontFamily.value.trim();
+    if (font) body.append("font_family", font);
 
     try {
       const res = await fetch(`${API}/ad-images/render`, { method: "POST", body });
@@ -756,6 +791,7 @@
       ["Sizing", d.asset.dimension_source.replace(/_/g, " ")],
       ["Placement", d.ad_copy.placement.replace(/_/g, " ")],
       ["Quality", d.quality],
+      ["Typeface", d.font_family || "model\u2019s choice"],
       ["Model", d.model],
     ];
 

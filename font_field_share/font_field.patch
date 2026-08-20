@@ -1,0 +1,177 @@
+diff --git a/app/api/controller.py b/app/api/controller.py
+index 546df85..f91110b 100644
+--- a/app/api/controller.py
++++ b/app/api/controller.py
+@@ -59,6 +59,7 @@ class AdImageController:
+         width: int | None = None,
+         height: int | None = None,
+         quality: ImageQuality | None = None,
++        font_family: str | None = None,
+     ) -> RenderResponse:
+         # 1. Resolve the target slot. Raises if the combination is invalid.
+         spec = platforms.resolve(platform, asset_type)
+@@ -83,6 +84,10 @@ class AdImageController:
+                 details={"max_upload_bytes": self._settings.max_upload_bytes},
+             )
+ 
++        # 3b. A brand-kit typeface, if one was sent. Checked here because
++        #     it is interpolated into the render prompt.
++        font_family = prompt_service.clean_font_family(font_family)
++
+         # 4. Source text is the only permitted basis for the copy, so it is
+         #    checked before anything expensive happens.
+         warnings: list[str] = list(prompt_service.assess_source_text(source_text))
+@@ -118,6 +123,7 @@ class AdImageController:
+                 spec=spec,
+                 width=width,
+                 height=height,
++                font_family=font_family,
+             ),
+             width=width,
+             height=height,
+@@ -173,6 +179,7 @@ class AdImageController:
+             model=rendered.model,
+             copy_model=self._copy_model.model,
+             quality=rendered.quality,
++            font_family=font_family,
+             alt_text=prompt_service.derive_alt_text(source_text, spec),
+             warnings=warnings,
+         )
+diff --git a/app/api/router.py b/app/api/router.py
+index e2d7583..618c490 100644
+--- a/app/api/router.py
++++ b/app/api/router.py
+@@ -105,6 +105,14 @@ async def render_ad_image(
+             "configured default (low), which is cheapest and fastest."
+         ),
+     ),
++    font_family: str | None = Form(
++        None,
++        description=(
++            "Brand-kit typeface for the rendered text, e.g. Arial. Omit "
++            "to let the model choose the typeface, which is the "
++            "behaviour when no brand kit applies."
++        ),
++    ),
+     controller: AdImageController = Depends(get_controller),
+ ) -> RenderResponse:
+     """Set approved ad text over the supplied image. Text only -- no
+@@ -121,4 +129,5 @@ async def render_ad_image(
+         width=width,
+         height=height,
+         quality=quality,
++        font_family=font_family,
+     )
+diff --git a/app/api/schemas.py b/app/api/schemas.py
+index b55f01f..4dc505b 100644
+--- a/app/api/schemas.py
++++ b/app/api/schemas.py
+@@ -86,6 +86,13 @@ class RenderResponse(BaseModel):
+     model: str
+     copy_model: str
+     quality: str = Field(description="Render quality actually used.")
++    font_family: str | None = Field(
++        default=None,
++        description=(
++            "The brand-kit typeface requested for this render, echoed "
++            "back. Null when none was sent and the model chose it."
++        ),
++    )
+     alt_text: str | None = Field(
+         default=None,
+         description=(
+diff --git a/app/services/prompt_service.py b/app/services/prompt_service.py
+index 00491a7..e080e50 100644
+--- a/app/services/prompt_service.py
++++ b/app/services/prompt_service.py
+@@ -18,7 +18,7 @@ from __future__ import annotations
+ 
+ import re
+ 
+-from app.core.errors import InsufficientSourceTextError
++from app.core.errors import InsufficientSourceTextError, InvalidRequestError
+ from app.domain.platforms import AssetSpec, AssetType
+ 
+ # Below this, there is nothing honest to build a headline from.
+@@ -28,6 +28,12 @@ THIN_SOURCE_WORDS = 12
+ 
+ MAX_ALT_TEXT_CHARS = 125
+ 
++# A brand-kit typeface name: "Arial", "Helvetica Neue", "Gill Sans MT".
++# The value reaches the image model verbatim, so it must read as a font
++# name and nothing else -- a sentence here would be read as instructions.
++MAX_FONT_FAMILY_CHARS = 40
++_FONT_FAMILY_PATTERN = re.compile("^[A-Za-z][A-Za-z0-9 .+&'-]*$")
++
+ # Headline / supporting-line word budgets. Small canvases get fewer words
+ # because anything longer stops being legible at render size.
+ _WORD_BUDGETS: dict[AssetType, tuple[int, int]] = {
+@@ -84,6 +90,33 @@ def derive_alt_text(source_text: str, spec: AssetSpec) -> str | None:
+     return first_sentence[: MAX_ALT_TEXT_CHARS - 1].rstrip() + "…"
+ 
+ 
++def clean_font_family(value: str | None) -> str | None:
++    """Validate a brand-kit typeface name, or None when none was sent.
++
++    Collapses whitespace and refuses anything that is not plainly a font
++    name, because the value is interpolated into the image prompt.
++    """
++    if value is None:
++        return None
++    cleaned = " ".join(value.split())
++    if not cleaned:
++        return None
++    if len(cleaned) > MAX_FONT_FAMILY_CHARS:
++        raise InvalidRequestError(
++            f"font_family is {len(cleaned)} characters; the maximum is "
++            f"{MAX_FONT_FAMILY_CHARS}.",
++            details={"font_family": value[:80],
++                     "maximum": MAX_FONT_FAMILY_CHARS},
++        )
++    if not _FONT_FAMILY_PATTERN.match(cleaned):
++        raise InvalidRequestError(
++            "font_family must be a typeface name -- letters, digits, spaces "
++            "and the characters . ' - + & only, starting with a letter.",
++            details={"font_family": value[:80]},
++        )
++    return cleaned
++
++
+ def word_budget(spec: AssetSpec) -> tuple[int, int]:
+     return _WORD_BUDGETS.get(spec.asset_type, _DEFAULT_WORD_BUDGET)
+ 
+@@ -175,6 +208,7 @@ def build_render_prompt(
+     spec: AssetSpec,
+     width: int,
+     height: int,
++    font_family: str | None = None,
+ ) -> str:
+     """Brief the image model with the final words only.
+ 
+@@ -183,6 +217,17 @@ def build_render_prompt(
+     """
+     where = _PLACEMENT_PHRASING.get(placement, "over a calm area of the image")
+ 
++    # With a brand kit the typeface is dictated; without one the model keeps
++    # choosing it, exactly as it did before this parameter existed. Every
++    # other typography instruction is identical in both cases.
++    typeface = (
++        f"- Set every word in {font_family}. Use that exact typeface and no "
++        "other."
++        if font_family
++        else "- Choose a typeface with real character that suits the mood "
++        "of this photograph."
++    )
++
+     second_line = (
+         f'\nSupporting line, set smaller beneath it: "{subheadline}"'
+         if subheadline
+@@ -204,7 +249,7 @@ framing, people, faces and objects. Only the text is new.
+ 
+ Make the typography exceptional — work a brand-campaign art director would sign
+ off, not default type dropped on a photo:
+-- Choose a typeface with real character that suits the mood of this photograph.
++{typeface}
+ - Make the headline dominant, with decisive size and weight contrast against any
+   supporting line.
+ - Take the colour from the photograph: clean white or near-black, or an accent
