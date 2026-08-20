@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ad Asset Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+/* ═══════════════════════════════════════════════════════════════ tokens
+   A dark studio: the photograph is the subject, the chrome gets out of its
+   way. One warm accent, hairline rules, no card-stack, no gradients. */
+:root {
+  --ink:        #0C100F;
+  --panel:      #131917;
+  --panel-2:    #1A211F;
+  --panel-3:    #212927;
+  --hair:       rgba(255,255,255,0.075);
+  --hair-2:     rgba(255,255,255,0.16);
+  --text:       #F2F0EB;
+  --dim:        #A8B2AE;
+  --faint:      #7C8783;
+  --accent:     #E0A458;
+  --accent-dim: #B9813C;
+  --on-accent:  #17120C;
+  --ok:         #6FCF97;
+  --warn:       #E3B341;
+  --bad:        #F0837A;
+
+  --ui:      "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --display: "Playfair Display", Georgia, "Times New Roman", serif;
+  --mono:    "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
+
+  --t: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  --gutter: clamp(16px, 4vw, 40px);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--ui);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, p { margin: 0; }
+button { font: inherit; color: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.eyebrow {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--faint);
+}
+
+/* ═══════════════════════════════════════════════════════════════ chrome */
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: var(--gutter);
+  padding: 0 var(--gutter);
+  height: 60px;
+  background: rgba(12,16,15,0.86);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--hair);
+}
+.wordmark {
+  display: flex; align-items: baseline; gap: 9px;
+  font-family: var(--display); font-size: 19px; font-weight: 600;
+  letter-spacing: -0.01em; white-space: nowrap;
+}
+.wordmark span { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--faint); }
+
+/* stage rail */
+.rail { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.rail button {
+  display: flex; align-items: center; gap: 8px;
+  background: none; border: 0; cursor: pointer;
+  padding: 8px 12px; min-height: 44px;
+  font-size: 13px; color: var(--faint);
+  transition: color var(--t);
+}
+.rail button:hover:not(:disabled) { color: var(--dim); }
+.rail button:disabled { cursor: default; opacity: 0.5; }
+.rail button[aria-current="step"] { color: var(--text); }
+.rail .num {
+  width: 21px; height: 21px; border-radius: 50%;
+  border: 1px solid var(--hair-2);
+  display: grid; place-items: center;
+  font-family: var(--mono); font-size: 10.5px;
+  transition: background var(--t), border-color var(--t), color var(--t);
+}
+.rail button[aria-current="step"] .num {
+  background: var(--accent); border-color: var(--accent); color: var(--on-accent);
+}
+.rail button.done .num { border-color: var(--accent-dim); color: var(--accent); }
+.rail .tick { width: 22px; height: 1px; background: var(--hair-2); }
+@media (max-width: 780px) { .rail .label { display: none; } }
+
+.health { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--faint); }
+.dot.up { background: var(--ok); } .dot.down { background: var(--bad); }
+@media (max-width: 980px) { .health .txt { display: none; } }
+
+/* ═══════════════════════════════════════════════════════════════ stages */
+.stage { display: none; }
+.stage.live { display: block; }
+
+.wrap { max-width: 1440px; margin: 0 auto; padding: var(--gutter); }
+
+.lede { max-width: 62ch; margin-bottom: 30px; }
+.lede h2 {
+  font-family: var(--display); font-size: clamp(26px, 3.6vw, 40px);
+  font-weight: 600; letter-spacing: -0.02em; line-height: 1.12;
+}
+.lede p { color: var(--dim); font-size: 15px; margin-top: 9px; }
+
+/* two-column working area */
+.split { display: grid; gap: clamp(20px, 3vw, 44px); grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1000px) { .split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+@media (min-width: 1300px) { .split.wide-left { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); } }
+
+.panel { border: 1px solid var(--hair); border-radius: 3px; background: var(--panel); }
+.panel + .panel { margin-top: 18px; }
+.panel > .head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 18px; border-bottom: 1px solid var(--hair);
+}
+.panel > .head h3 { font-size: 13px; font-weight: 600; letter-spacing: -0.005em; }
+.panel > .head .right { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+.panel > .body { padding: 18px; }
+
+/* ═══════════════════════════════════════════════════════════════ fields */
+.field { margin-bottom: 20px; }
+.field:last-child { margin-bottom: 0; }
+.field > label, .field > .lbl {
+  display: flex; align-items: baseline; gap: 10px;
+  font-size: 12.5px; font-weight: 600; margin-bottom: 7px;
+}
+.field .meta { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+.field .meta.over { color: var(--bad); }
+.help { font-size: 12px; color: var(--faint); margin-top: 7px; }
+.help.bad { color: var(--bad); }
+
+input[type="text"], input[type="number"], textarea, select {
+  width: 100%; font: inherit; font-size: 14.5px;
+  color: var(--text); background: var(--panel-2);
+  border: 1px solid var(--hair); border-radius: 3px;
+  padding: 11px 13px; min-height: 46px;
+  transition: border-color var(--t), background var(--t);
+}
+input::placeholder, textarea::placeholder { color: var(--faint); }
+input:hover, textarea:hover, select:hover { border-color: var(--hair-2); }
+input:focus, textarea:focus, select:focus { background: var(--panel-3); }
+input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--bad); }
+textarea { min-height: 132px; resize: vertical; line-height: 1.6; }
+input[type="number"] { font-family: var(--mono); }
+
+select {
+  cursor: pointer; appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237C8783' stroke-width='2.5' stroke-linecap='round'><path d='M6 9l6 6 6-6'/></svg>");
+  background-repeat: no-repeat; background-position: right 13px center;
+  padding-right: 36px;
+}
+select option { background: var(--panel-2); color: var(--text); }
+
+.duo { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+.trio { display: grid; gap: 10px; grid-template-columns: 1fr 14px 1fr; align-items: center; }
+.trio .x { text-align: center; color: var(--faint); font-family: var(--mono); padding-top: 20px; }
+
+.toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; color: var(--dim); }
+.toggle input { width: 17px; height: 17px; min-height: 0; accent-color: var(--accent); cursor: pointer; }
+
+details.more { border-top: 1px solid var(--hair); margin-top: 20px; padding-top: 16px; }
+details.more > summary {
+  cursor: pointer; list-style: none; font-size: 12.5px; font-weight: 600;
+  color: var(--dim); display: flex; align-items: center; gap: 8px;
+  min-height: 30px; transition: color var(--t);
+}
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary:hover { color: var(--text); }
+details.more > summary::before {
+  content: "+"; font-family: var(--mono); color: var(--accent); font-size: 14px;
+}
+details.more[open] > summary::before { content: "–"; }
+details.more > div { padding-top: 18px; }
+
+/* ═══════════════════════════════════════════════════════════ dropzone */
+.drop {
+  position: relative;
+  border: 1px dashed var(--hair-2); border-radius: 3px;
+  background: var(--panel-2);
+  aspect-ratio: 16 / 10;
+  display: grid; place-items: center; text-align: center;
+  cursor: pointer; overflow: hidden;
+  transition: border-color var(--t), background var(--t);
+}
+.drop:hover, .drop.over { border-color: var(--accent); background: var(--panel-3); }
+.drop .prompt { padding: 24px; }
+.drop .prompt svg { color: var(--accent); margin-bottom: 10px; }
+.drop .prompt strong { display: block; font-size: 14px; font-weight: 600; }
+.drop .prompt span { font-size: 12px; color: var(--faint); }
+/* contain, not cover: the service never crops, so neither should the
+   preview of what was chosen. */
+.drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #080B0A; }
+.drop .swap {
+  position: absolute; right: 10px; bottom: 10px; z-index: 2;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(12,16,15,0.82); border: 1px solid var(--hair-2);
+  border-radius: 2px; padding: 7px 10px; color: var(--text);
+}
+.filemeta {
+  display: flex; gap: 14px; flex-wrap: wrap;
+  font-family: var(--mono); font-size: 11px; color: var(--faint);
+  margin-top: 10px;
+}
+
+/* ═══════════════════════════════════════════════════════════ buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  border: 1px solid transparent; border-radius: 3px;
+  padding: 13px 22px; min-height: 48px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: background var(--t), border-color var(--t), color var(--t), opacity var(--t);
+}
+.btn:disabled { cursor: not-allowed; opacity: 0.4; }
+.btn-go { background: var(--accent); color: var(--on-accent); width: 100%; }
+.btn-go:hover:not(:disabled) { background: #EDB672; }
+.btn-line { background: transparent; border-color: var(--hair-2); color: var(--text); }
+.btn-line:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.btn-bare { background: none; border: 0; color: var(--dim); padding: 12px 4px; }
+.btn-bare:hover:not(:disabled) { color: var(--text); }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+.actions .btn { flex: 1 1 auto; }
+
+.stops { margin: 12px 0 0; padding: 0; list-style: none; }
+.stops:empty { display: none; }
+.stops li {
+  font-size: 12px; color: var(--faint);
+  display: flex; gap: 8px; padding: 2px 0;
+}
+.stops li::before { content: "→"; color: var(--accent-dim); }
+
+/* ═══════════════════════════════════════════════════════════ preview */
+.canvas-wrap { position: sticky; top: 84px; }
+.canvas {
+  position: relative; overflow: hidden;
+  background: var(--panel-2); border: 1px solid var(--hair);
+  display: grid; place-items: center;
+}
+/* The frame takes the photograph's own aspect ratio and the image is
+   contained inside it, so nothing is hidden or cropped. The photograph is
+   shown as it is -- no simulated type over it. A CSS mockup cannot match the
+   face, colour, size, weight contrast or line breaking the image model
+   chooses, so showing one only invites a comparison it must lose. */
+.canvas > img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.canvas .empty { color: var(--faint); font-size: 13px; padding: 40px; text-align: center; }
+
+.canvas-note {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  font-family: var(--mono); font-size: 10.5px; color: var(--faint);
+  margin-top: 10px;
+}
+
+/* ═══════════════════════════════════════════════════════════ options */
+.options { display: grid; gap: 12px; }
+
+.opt {
+  position: relative; display: block; width: 100%; text-align: left;
+  background: var(--panel); border: 1px solid var(--hair);
+  border-radius: 3px; padding: 20px 20px 18px; cursor: pointer;
+  transition: border-color var(--t), background var(--t);
+}
+.opt:hover { border-color: var(--hair-2); background: var(--panel-2); }
+.opt[aria-checked="true"] { border-color: var(--accent); background: var(--panel-2); }
+.opt[aria-checked="true"]::before {
+  content: ""; position: absolute; left: -1px; top: 14px; bottom: 14px;
+  width: 2px; background: var(--accent);
+}
+.opt .idx {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+  color: var(--faint); text-transform: uppercase;
+}
+.opt[aria-checked="true"] .idx { color: var(--accent); }
+.opt .h {
+  font-family: var(--display); font-size: clamp(20px, 2.1vw, 27px);
+  font-weight: 600; line-height: 1.14; letter-spacing: -0.015em;
+  margin-top: 7px;
+}
+.opt .s { font-size: 13.5px; color: var(--dim); margin-top: 7px; }
+.opt .s.none { color: var(--faint); font-style: italic; font-size: 12.5px; }
+.opt .foot { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+.tagl {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--faint);
+  border: 1px solid var(--hair); border-radius: 2px; padding: 4px 7px;
+}
+.opt .why { margin-top: 12px; }
+.opt .why summary { font-family: var(--mono); font-size: 10.5px; color: var(--faint); cursor: pointer; }
+.opt .why p {
+  font-size: 12.5px; color: var(--dim); margin-top: 8px;
+  border-left: 1px solid var(--accent-dim); padding-left: 11px; font-style: italic;
+}
+.opt.own { border-style: dashed; }
+.opt.own .h { font-family: var(--ui); font-size: 16px; font-weight: 600; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .opt.in { animation: fade 420ms cubic-bezier(0.2,0.8,0.3,1) backwards; }
+  @keyframes fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+}
+
+/* ═══════════════════════════════════════════════════════════ messages */
+.msg { border: 1px solid var(--hair); border-left-width: 2px; border-radius: 2px;
+  padding: 12px 14px; font-size: 13px; margin-top: 16px; }
+.msg .t { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+  text-transform: uppercase; margin-bottom: 6px; }
+.msg ul { margin: 6px 0 0; padding-left: 17px; }
+.msg li + li { margin-top: 4px; }
+.msg.err  { border-left-color: var(--bad);  color: var(--bad); background: rgba(240,131,122,0.05); }
+.msg.warn { border-left-color: var(--warn); color: var(--warn); background: rgba(227,179,65,0.05); }
+.msg.info { border-left-color: var(--hair-2); color: var(--dim); }
+
+.working { display: flex; align-items: center; gap: 11px; color: var(--dim); font-size: 13px; }
+.pulse {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+  animation: beat 1.05s ease-in-out infinite;
+}
+@keyframes beat { 0%,100% { opacity: 0.25; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.25); } }
+@media (prefers-reduced-motion: reduce) { .pulse { animation-duration: 2.4s; } }
+.working .el { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+
+/* ═══════════════════════════════════════════════════════════ result */
+.shot {
+  background: #080B0A; border: 1px solid var(--hair);
+  padding: clamp(12px, 2vw, 28px);
+  display: grid; place-items: center;
+}
+.shot img { max-width: 100%; max-height: 72vh; height: auto; display: block; }
+
+.spec { border-top: 1px solid var(--hair); }
+.spec dl { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 0; }
+@media (min-width: 700px) { .spec dl { grid-template-columns: repeat(3, 1fr); } }
+.spec div {
+  padding: 13px 16px; border-bottom: 1px solid var(--hair); border-right: 1px solid var(--hair);
+}
+.spec dt { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--faint); }
+.spec dd { margin: 5px 0 0; font-size: 13.5px; }
+.spec dd.accent { color: var(--accent); }
+
+.copy-out { padding: 22px 4px 0; }
+.copy-out .h {
+  font-family: var(--display); font-size: clamp(22px, 3vw, 34px);
+  font-weight: 600; line-height: 1.12; letter-spacing: -0.02em;
+}
+.copy-out .s { font-size: 15px; color: var(--dim); margin-top: 8px; }
+
+pre.raw {
+  margin: 0; padding: 15px; background: #080B0A; border: 1px solid var(--hair);
+  border-radius: 2px; overflow-x: auto;
+  font-family: var(--mono); font-size: 11.5px; line-height: 1.55; color: var(--dim);
+}
+details.rawwrap { margin-top: 18px; }
+details.rawwrap summary { font-family: var(--mono); font-size: 11px; color: var(--faint); cursor: pointer; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wordmark">Ad&nbsp;Asset&nbsp;Studio <span>demo</span></div>
+
+  <nav class="rail" aria-label="Progress">
+    <button type="button" id="rail1" aria-current="step"><span class="num">1</span><span class="label">Brief</span></button>
+    <span class="tick" aria-hidden="true"></span>
+    <button type="button" id="rail2" disabled><span class="num">2</span><span class="label">Words</span></button>
+    <span class="tick" aria-hidden="true"></span>
+    <button type="button" id="rail3" disabled><span class="num">3</span><span class="label">Asset</span></button>
+  </nav>
+
+  <span class="health"><span class="dot" id="dot"></span><span class="txt mono" id="dotText">checking</span></span>
+</header>
+
+<!-- ══════════════════════════════════════════════════ STAGE 1 · brief -->
+<section class="stage live" id="stage1">
+  <div class="wrap">
+    <div class="lede">
+      <h2>Start with the photograph and the truth about the business.</h2>
+      <p>The brief is the only source of facts the copywriter may draw on. Nothing it cannot point to in your text will appear on the image.</p>
+    </div>
+
+    <div class="split wide-left">
+      <div>
+        <div class="panel">
+          <div class="head"><h3>Photograph</h3><span class="right" id="fileState">none chosen</span></div>
+          <div class="body">
+            <div class="drop" id="drop" role="button" tabindex="0" aria-label="Choose a photograph, or drop one here">
+              <div class="prompt" id="dropPrompt">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" /><path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3" />
+                </svg>
+                <strong>Choose a photograph</strong>
+                <span>or drop it here · JPEG, PNG, WebP · up to 30 MB</span>
+              </div>
+              <img id="thumb" alt="" hidden />
+              <span class="swap" id="swap" hidden>Replace</span>
+            </div>
+            <input type="file" id="file" class="sr-only" accept="image/jpeg,image/png,image/webp" />
+            <div class="filemeta" id="fileMeta" hidden></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <div class="head"><h3>Brief</h3><span class="right" id="briefCount">0 words</span></div>
+          <div class="body">
+            <div class="field">
+              <textarea id="sourceText" aria-label="The brief"
+                placeholder="Wide-plank wood-look flooring that brings warmth and elegance to any room with a view. Ready to upgrade your floors? Get your free estimate today!"></textarea>
+              <p class="help" id="briefHelp">Minimum five words. Paste the client's own copy — it will be distilled, never transcribed.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="head"><h3>Destination</h3><span class="right" id="slotSize">—</span></div>
+          <div class="body">
+            <div class="duo">
+              <div class="field">
+                <label for="platform">Platform</label>
+                <select id="platform"></select>
+              </div>
+              <div class="field">
+                <label for="assetType">Asset slot</label>
+                <select id="assetType"></select>
+              </div>
+            </div>
+            <p class="help" id="slotHelp">—</p>
+
+            <details class="more">
+              <summary>Override the published size</summary>
+              <div>
+                <div class="field">
+                  <label class="toggle" for="override">
+                    <input type="checkbox" id="override" />
+                    Override the published size
+                  </label>
+                </div>
+                <div class="trio" id="sizeRow" hidden>
+                  <div class="field" style="margin:0">
+                    <label for="width">Width</label>
+                    <input type="number" id="width" min="64" max="3840" />
+                  </div>
+                  <span class="x">×</span>
+                  <div class="field" style="margin:0">
+                    <label for="height">Height</label>
+                    <input type="number" id="height" min="64" max="3840" />
+                  </div>
+                </div>
+                <p class="help">Width and height are the only extra fields
+                <span class="mono">/copy-options</span> accepts — the copy is
+                written for the size it will be set at. Typeface and quality
+                belong to the render, so they live in step&nbsp;2.</p>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <div style="margin-top:18px">
+          <button type="button" class="btn btn-go" id="btnOptions">Write three options</button>
+          <ul class="stops" id="stops1"></ul>
+          <div id="busy1" hidden style="margin-top:14px">
+            <div class="working"><span class="pulse"></span><span>Reading the photograph and the brief</span><span class="el" id="el1">0s</span></div>
+          </div>
+          <div class="msg info" style="margin-top:14px">
+            <div class="t">POST /ad-images/copy-options</div>
+            One text call. No image is rendered, so this is fast and cheap — the same call your production UI makes first.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ STAGE 2 · words -->
+<section class="stage" id="stage2">
+  <div class="wrap">
+    <div class="lede">
+      <h2>Three routes to the same truth. Choose one, or write your own.</h2>
+      <p>Every option was checked before you saw it: within the word budget, no call-to-action, no figure that is not in your brief. Edits you make are not checked — your words are your own.</p>
+    </div>
+
+    <div class="split wide-left">
+      <div class="canvas-wrap">
+        <div class="canvas" id="canvas">
+          <img id="canvasImg" alt="The photograph you chose" />
+        </div>
+        <div class="canvas-note">
+          <span id="cropNote">—</span>
+        </div>
+        <div class="canvas-note" id="ratioNote" hidden></div>
+      </div>
+
+      <div>
+        <div class="options" id="options" role="radiogroup" aria-label="Copy options"></div>
+
+        <div class="panel" id="editor" hidden style="margin-top:18px">
+          <div class="head"><h3>The words as they will be set</h3><span class="right" id="editorMode">—</span></div>
+          <div class="body">
+            <div class="field">
+              <label for="headline">Headline <span class="meta" id="hCount"></span></label>
+              <input type="text" id="headline" autocomplete="off" placeholder="What the image should say" />
+              <p class="help" id="hHelp"></p>
+            </div>
+            <div class="field" id="subField">
+              <label for="subheadline">Supporting line <span class="meta" id="sCount"></span></label>
+              <input type="text" id="subheadline" autocomplete="off" placeholder="Optional — blank for none" />
+              <p class="help" id="sHelp"></p>
+            </div>
+            <div class="field">
+              <label for="placement">Placement</label>
+              <select id="placement"></select>
+              <p class="help">The region the copywriter judged calmest in this photograph. Moving it is rarely an improvement.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:18px">
+          <div class="head">
+            <h3>Brand kit</h3>
+            <span class="right" id="faceState">model chooses</span>
+          </div>
+          <div class="body">
+            <div class="field">
+              <label for="fontFamily">Typeface</label>
+              <input type="text" id="fontFamily" maxlength="40" autocomplete="off"
+                     placeholder="Arial — blank lets the model choose" />
+              <p class="help" id="fontHelp">Every word is set in this face. Blank lets the image model pick one to suit the photograph.</p>
+            </div>
+            <div class="field">
+              <label for="quality">Render quality</label>
+              <select id="quality">
+                <option value="">low — default, cheapest and fastest</option>
+                <option value="medium">medium</option>
+                <option value="high">high</option>
+                <option value="auto">auto</option>
+              </select>
+            </div>
+            <p class="help">Neither field exists on <span class="mono">/copy-options</span>; both are sent with the render.</p>
+          </div>
+        </div>
+
+        <div style="margin-top:18px">
+          <button type="button" class="btn btn-go" id="btnRender">Render the asset</button>
+          <ul class="stops" id="stops2"></ul>
+          <div id="busy2" hidden style="margin-top:14px">
+            <div class="working"><span class="pulse"></span><span id="busy2Text">Setting the words on the photograph</span><span class="el" id="el2">0s</span></div>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-bare" id="backTo1">← Change the brief or photograph</button>
+          </div>
+          <div class="msg info">
+            <div class="t">POST /ad-images/render</div>
+            The same endpoint your one-call flow uses, plus <span class="mono">headline</span>,
+            <span class="mono">subheadline</span> and <span class="mono">placement</span>. Sending a headline skips the copywriter; the rendering itself is unchanged.
+            <span id="briefNote"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════ STAGE 3 · asset -->
+<section class="stage" id="stage3">
+  <div class="wrap">
+    <div class="split">
+      <div>
+        <div class="shot"><img id="outImg" alt="" /></div>
+        <div class="actions">
+          <button type="button" class="btn btn-line" id="btnDownload">Download</button>
+          <button type="button" class="btn btn-line" id="btnBack2">← Try another option</button>
+          <button type="button" class="btn btn-bare" id="btnReset">Start over</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="copy-out">
+          <div class="eyebrow" id="outWho">—</div>
+          <div class="h" id="outH"></div>
+          <div class="s" id="outS"></div>
+        </div>
+
+        <div class="panel" style="margin-top:22px">
+          <div class="head"><h3>The asset</h3></div>
+          <div class="spec">
+            <dl id="outSpec"></dl>
+          </div>
+        </div>
+
+        <div id="outAlt" class="msg info" hidden></div>
+        <div id="outWarn" class="msg warn" hidden></div>
+        <div id="outNotice" class="msg info"></div>
+
+        <details class="rawwrap">
+          <summary>Raw JSON response</summary>
+          <pre class="raw" id="outRaw"></pre>
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap" style="padding-top:0"><div id="errSlot"></div></div>
+
+<script>
+"use strict";
+
+const API = window.location.origin + "/api/v1";
+const $ = (id) => document.getElementById(id);
+
+/* Mirrors the server so the two never disagree about the same input:
+   clean_user_copy() for the words, clean_font_family() for the typeface. */
+const LIMITS = { hChars: 120, hWords: 20, sChars: 160, sWords: 30, briefWords: 5 };
+const FONT_OK = /^[A-Za-z][A-Za-z0-9 .+&'-]*$/;
+
+const PLACEMENTS = [
+  ["top_left", "Top left"], ["top_center", "Top centre"], ["top_right", "Top right"],
+  ["center_left", "Centre left"], ["center", "Centre"], ["center_right", "Centre right"],
+  ["bottom_left", "Bottom left"], ["bottom_center", "Bottom centre"], ["bottom_right", "Bottom right"],
+];
+
+const state = {
+  file: null,
+  altText: null,         // quoted from the brief by /copy-options
+  photo: null,           // the source image's own pixel dimensions
+  caps: null,
+  options: [],
+  picked: null,          // index | "own"
+  budgets: { headline: 8, support: 12 },
+  size: { w: 1080, h: 1080 },
+  render: null,
+  stage: 1,
+};
+
+const words = (s) => (s || "").trim() ? (s || "").trim().split(/\s+/).length : 0;
+const tidy = (s) => (s || "").trim().replace(/\s+/g, " ");
+const bytes = (n) => n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.round(n / 1024) + " KB";
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/* ─────────────────────────────────────────────────────────────── stages */
+function goto(stage) {
+  state.stage = stage;
+  [1, 2, 3].forEach((n) => {
+    $("stage" + n).classList.toggle("live", n === stage);
+    const rail = $("rail" + n);
+    rail.disabled = n > stage && !(n === 2 && state.options.length) && !(n === 3 && state.render);
+    rail.classList.toggle("done", n < stage);
+    if (n === stage) rail.setAttribute("aria-current", "step");
+    else rail.removeAttribute("aria-current");
+  });
+  window.scrollTo({ top: 0, behavior: "instant" });
+}
+$("rail1").addEventListener("click", () => goto(1));
+$("rail2").addEventListener("click", () => { if (state.options.length) goto(2); });
+$("rail3").addEventListener("click", () => { if (state.render) goto(3); });
+$("backTo1").addEventListener("click", () => goto(1));
+$("btnBack2").addEventListener("click", () => goto(2));
+$("btnReset").addEventListener("click", () => {
+  state.options = []; state.picked = null; state.render = null;
+  $("options").innerHTML = ""; $("editor").hidden = true;
+  goto(1);
+});
+
+/* ───────────────────────────────────────────────────────── capabilities */
+async function boot() {
+  PLACEMENTS.forEach(([v, label]) => {
+    const o = document.createElement("option");
+    o.value = v; o.textContent = label;
+    $("placement").appendChild(o);
+  });
+
+  try {
+    const r = await fetch(`${API}/health`);
+    if (!r.ok) throw new Error(r.status);
+    $("dot").className = "dot up"; $("dotText").textContent = "api up";
+  } catch {
+    $("dot").className = "dot down"; $("dotText").textContent = "api down";
+    return;
+  }
+
+  try {
+    state.caps = await (await fetch(`${API}/capabilities`)).json();
+    const sel = $("platform");
+    sel.innerHTML = "";
+    state.caps.platforms.forEach((p) => {
+      const o = document.createElement("option");
+      o.value = p.platform;
+      o.textContent = p.platform.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      sel.appendChild(o);
+    });
+    sel.value = "meta";
+    fillSlots();
+  } catch (err) {
+    showError({ message: "Could not read /capabilities — " + err.message });
+  }
+}
+
+const platformOf = () => (state.caps?.platforms || []).find((p) => p.platform === $("platform").value);
+const slotOf = () => (platformOf()?.asset_types || []).find((a) => a.asset_type === $("assetType").value);
+
+function fillSlots() {
+  const sel = $("assetType");
+  sel.innerHTML = "";
+  (platformOf()?.asset_types || []).forEach((s) => {
+    const o = document.createElement("option");
+    o.value = s.asset_type;
+    o.textContent = s.accepts_text_overlay
+      ? `${s.label} · ${s.default_width}×${s.default_height}`
+      : `${s.label} · takes no text`;
+    o.disabled = !s.accepts_text_overlay;
+    sel.appendChild(o);
+  });
+  const usable = (platformOf()?.asset_types || []).find((a) => a.accepts_text_overlay);
+  if (usable) sel.value = usable.asset_type;
+  slotChanged();
+}
+
+function slotChanged() {
+  const slot = slotOf();
+  if (!slot) return;
+  state.budgets = { headline: slot.headline_word_budget, support: slot.support_word_budget };
+  $("slotSize").textContent = `${slot.default_width}×${slot.default_height}`;
+  const bits = [
+    `${slot.allowed_formats.join(" / ")}`,
+    `headline ${slot.headline_word_budget} words`,
+    slot.support_word_budget ? `support ${slot.support_word_budget} words` : "no supporting line",
+  ];
+  if (slot.requires_alt_text) bits.push("alt text required");
+  $("slotHelp").textContent = bits.join(" · ");
+  $("width").placeholder = slot.default_width;
+  $("height").placeholder = slot.default_height;
+  $("subField").hidden = slot.support_word_budget === 0;
+  if (slot.support_word_budget === 0) $("subheadline").value = "";
+
+  // options were written for the previous slot's budget, so they lapse
+  if (state.options.length) {
+    state.options = []; state.picked = null;
+    $("options").innerHTML = ""; $("editor").hidden = true;
+  }
+  applySize();
+  check();
+}
+
+function applySize() {
+  const slot = slotOf();
+  const custom = $("override").checked && $("width").value && $("height").value;
+  state.size = custom
+    ? { w: Number($("width").value), h: Number($("height").value) }
+    : { w: slot?.default_width || 1080, h: slot?.default_height || 1080 };
+  frameToPhoto();
+}
+
+/* The preview frame takes the photograph's own proportions, never the output's.
+   Nothing in the pipeline crops -- plan_size() renders at the requested ratio
+   and finalize() resamples to the exact size -- so cropping the preview to the
+   output ratio would hide part of a photograph that is never actually lost. */
+function frameToPhoto() {
+  const { w: outW, h: outH } = state.size;
+  const src = state.photo;
+  const box = $("canvas");
+  box.style.aspectRatio = src ? `${src.w} / ${src.h}` : `${outW} / ${outH}`;
+
+  $("cropNote").textContent = src
+    ? `photo ${src.w}×${src.h} · output ${outW}×${outH}`
+    : `output ${outW}×${outH}`;
+
+  // Worth saying only when the two shapes genuinely disagree.
+  const note = $("ratioNote");
+  if (!src) { note.hidden = true; return; }
+  const drift = Math.abs((src.w / src.h) - (outW / outH)) / (outW / outH);
+  if (drift < 0.04) {
+    note.hidden = true;
+  } else {
+    note.hidden = false;
+    note.textContent =
+      `whole photograph shown — nothing is cropped. the output is ${outW}×${outH}, `
+      + `a different shape, so the image model re-frames the scene to fill it.`;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────── file */
+function take(file) {
+  if (!file) return;
+  state.file = file;
+  state.photo = null;
+  const url = URL.createObjectURL(file);
+  $("thumb").src = url; $("thumb").hidden = false;
+  $("canvasImg").src = url;
+  // The frame cannot be sized until the real proportions are known.
+  const probe = new Image();
+  probe.onload = () => {
+    state.photo = { w: probe.naturalWidth, h: probe.naturalHeight };
+    frameToPhoto();
+  };
+  probe.src = url;
+  $("dropPrompt").hidden = true;
+  $("swap").hidden = false;
+  $("fileState").textContent = "ready";
+  $("fileMeta").hidden = false;
+  $("fileMeta").innerHTML =
+    `<span>${esc(file.name)}</span><span>${bytes(file.size)}</span><span>${esc(file.type || "unknown")}</span>`;
+  check();
+}
+$("drop").addEventListener("click", () => $("file").click());
+$("drop").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("file").click(); }
+});
+$("file").addEventListener("change", () => take($("file").files[0]));
+["dragenter", "dragover"].forEach((n) => $("drop").addEventListener(n, (e) => {
+  e.preventDefault(); $("drop").classList.add("over");
+}));
+["dragleave", "drop"].forEach((n) => $("drop").addEventListener(n, (e) => {
+  e.preventDefault(); $("drop").classList.remove("over");
+}));
+$("drop").addEventListener("drop", (e) => take(e.dataTransfer.files[0]));
+
+/* ─────────────────────────────────────────────────────────── validation */
+function fontHelpText() {
+  const face = tidy($("fontFamily").value);
+  return face
+    ? `Every word will be set in ${face}. You will see it on the render.`
+    : "Blank lets the image model choose a face to suit the photograph.";
+}
+
+function fontStop() {
+  const f = tidy($("fontFamily").value);
+  if (!f) return null;
+  if (f.length > 40) return "Typeface name is over 40 characters.";
+  if (!FONT_OK.test(f)) return "Typeface names take letters, digits, spaces and . ' - + & only.";
+  return null;
+}
+function copyStop(value, chars, maxWords, name) {
+  const t = tidy(value);
+  if (!t) return null;
+  if (t.length > chars) return `${name} is ${t.length} characters; the maximum is ${chars}.`;
+  if (words(t) > maxWords) return `${name} is ${words(t)} words; the maximum is ${maxWords}.`;
+  return null;
+}
+function sizeStop() {
+  if (!$("override").checked) return null;
+  const w = Number($("width").value), h = Number($("height").value);
+  if (!$("width").value || !$("height").value) return "Give both width and height, or neither.";
+  if (w < 64 || w > 3840 || h < 64 || h > 3840) return "Sizes run from 64 to 3840.";
+  return null;
+}
+
+function check() {
+  const brief = words($("sourceText").value);
+  $("briefCount").textContent = `${brief} word${brief === 1 ? "" : "s"}`;
+  const thin = brief > 0 && brief < LIMITS.briefWords;
+  $("briefHelp").classList.toggle("bad", thin);
+  $("briefHelp").textContent = thin
+    ? `Only ${brief} words — the copywriter needs at least ${LIMITS.briefWords}.`
+    : "Minimum five words. Paste the client's own copy — it will be distilled, never transcribed.";
+
+  const fStop = fontStop();
+  $("fontHelp").classList.toggle("bad", Boolean(fStop));
+  $("fontHelp").textContent = fStop || fontHelpText();
+  $("fontFamily").setAttribute("aria-invalid", fStop ? "true" : "false");
+
+  const stops1 = [];
+  if (!state.file) stops1.push("choose a photograph");
+  if (brief < LIMITS.briefWords) stops1.push(`a brief of at least ${LIMITS.briefWords} words`);
+  const sStop = sizeStop();
+  if (sStop) stops1.push(sStop);
+  paint($("stops1"), stops1);
+  $("btnOptions").disabled = stops1.length > 0;
+
+  // --- stage 2
+  const hStop = copyStop($("headline").value, LIMITS.hChars, LIMITS.hWords, "Headline");
+  const subStop = copyStop($("subheadline").value, LIMITS.sChars, LIMITS.sWords, "Supporting line");
+  counter($("hCount"), $("headline").value, LIMITS.hWords, state.budgets.headline);
+  counter($("sCount"), $("subheadline").value, LIMITS.sWords, state.budgets.support);
+  $("hHelp").textContent = hStop || ""; $("hHelp").classList.toggle("bad", Boolean(hStop));
+  $("sHelp").textContent = subStop || ""; $("sHelp").classList.toggle("bad", Boolean(subStop));
+  $("headline").setAttribute("aria-invalid", hStop ? "true" : "false");
+  $("subheadline").setAttribute("aria-invalid", subStop ? "true" : "false");
+
+  const stops2 = [];
+  if (state.picked === null) stops2.push("choose an option, or write your own");
+  else if (!tidy($("headline").value)) stops2.push("a headline — it cannot be blank");
+  if (hStop) stops2.push(hStop);
+  if (subStop) stops2.push(subStop);
+  if (fStop) stops2.push("a valid typeface name");
+  paint($("stops2"), stops2);
+  $("btnRender").disabled = stops2.length > 0;
+
+  // The brand kit is reported in the panel header rather than drawn on the
+  // photograph -- see the note on .canvas above.
+  const face = tidy($("fontFamily").value);
+  $("faceState").textContent =
+    face && !fStop ? face : "model chooses";
+
+  const note = $("briefNote");
+  if (note) {
+    note.textContent =
+      " No source_text is sent. The words are decided, and alt text already"
+      + " came back from the copy call.";
+  }
+}
+
+function counter(node, value, hard, budget) {
+  const n = words(value);
+  node.textContent = n ? `${n} word${n === 1 ? "" : "s"}` : "";
+  const over = n > hard;
+  node.classList.toggle("over", over);
+  if (!over && budget && n > budget) node.textContent += ` · past the ${budget}-word budget`;
+}
+function paint(node, items) {
+  node.innerHTML = items.map((i) => `<li>${esc(i)}</li>`).join("");
+}
+
+["input", "change"].forEach((ev) => {
+  ["sourceText", "fontFamily", "headline", "subheadline", "width", "height"]
+    .forEach((id) => $(id).addEventListener(ev, check));
+});
+$("override").addEventListener("change", () => {
+  $("sizeRow").hidden = !$("override").checked;
+  applySize(); check();
+});
+["width", "height"].forEach((id) => $(id).addEventListener("input", applySize));
+$("platform").addEventListener("change", fillSlots);
+$("assetType").addEventListener("change", slotChanged);
+
+/* ───────────────────────────────────────────────── shared request body */
+/* The brief belongs to the call that writes copy. The render call is given
+   the finished words, so it does not need one -- except to quote alt text
+   from, which is why slots that require alt text still get it. */
+function baseForm({ withBrief }) {
+  const form = new FormData();
+  form.append("image", state.file);                  // same File on both calls
+  if (withBrief) form.append("source_text", $("sourceText").value.trim());
+  form.append("platform", $("platform").value);
+  form.append("asset_type", $("assetType").value);
+  if ($("override").checked && $("width").value && $("height").value) {
+    form.append("width", $("width").value);
+    form.append("height", $("height").value);
+  }
+  return form;
+}
+
+async function post(path, form) {
+  const res = await fetch(`${API}${path}`, { method: "POST", body: form });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw { status: res.status, body };
+  return body;
+}
+
+/* ───────────────────────────────────────────── stage 1 → copy options */
+$("btnOptions").addEventListener("click", async () => {
+  clearError();
+  $("btnOptions").disabled = true;
+  $("busy1").hidden = false;
+  const stop = elapse($("el1"));
+  try {
+    const body = await post("/ad-images/copy-options", baseForm({ withBrief: true }));
+    state.options = body.options || [];
+    state.altText = body.alt_text;      // the brief lives on this call only
+    state.budgets = { headline: body.headline_word_budget, support: body.support_word_budget };
+    renderOptions(body);
+    goto(2);
+  } catch (err) {
+    showError(readError(err));
+  } finally {
+    stop(); $("busy1").hidden = true; check();
+  }
+});
+
+function renderOptions(body) {
+  const box = $("options");
+  box.innerHTML = "";
+  state.options.forEach((o, i) => box.appendChild(optionNode(o, i)));
+  box.appendChild(ownNode());
+  if (body.warnings?.length) {
+    const note = document.createElement("div");
+    note.className = "msg warn";
+    note.innerHTML = `<div class="t">note</div><ul>${
+      body.warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>`;
+    box.appendChild(note);
+  }
+  pick(0);
+}
+
+function optionNode(option, i) {
+  const node = document.createElement("button");
+  node.type = "button";
+  node.className = "opt in";
+  node.setAttribute("role", "radio");
+  node.setAttribute("aria-checked", "false");
+  node.style.animationDelay = `${i * 70}ms`;
+  node.dataset.i = String(i);
+  node.innerHTML = `
+    <div class="idx">Option ${i + 1}${i === 0 ? " · the one it would run" : ""}</div>
+    <div class="h">${esc(option.headline)}</div>
+    ${option.subheadline
+      ? `<div class="s">${esc(option.subheadline)}</div>`
+      : `<div class="s none">No supporting line — the copywriter judged one unnecessary.</div>`}
+    <div class="foot">
+      <span class="tagl">${esc(option.placement.replace(/_/g, " "))}</span>
+      <span class="tagl">${words(option.headline)} words</span>
+    </div>
+    <details class="why">
+      <summary>Why this is true</summary>
+      <p>${esc(option.source_support || "—")}</p>
+    </details>`;
+  node.addEventListener("click", (e) => {
+    if (e.target.closest("details")) return;
+    pick(i);
+  });
+  return node;
+}
+
+function ownNode() {
+  const node = document.createElement("button");
+  node.type = "button";
+  node.className = "opt own in";
+  node.setAttribute("role", "radio");
+  node.setAttribute("aria-checked", "false");
+  node.style.animationDelay = `${state.options.length * 70}ms`;
+  node.dataset.i = "own";
+  node.innerHTML = `
+    <div class="idx">Your own words</div>
+    <div class="h">Write it myself</div>
+    <div class="s">Keeps the placement the copywriter judged best. Your words are not checked against the brief.</div>`;
+  node.addEventListener("click", () => pick("own"));
+  return node;
+}
+
+function pick(which) {
+  state.picked = which;
+  Array.from($("options").children).forEach((n) => {
+    if (n.dataset.i !== undefined) {
+      n.setAttribute("aria-checked", String(n.dataset.i === String(which)));
+    }
+  });
+
+  if (which === "own") {
+    $("headline").value = "";
+    $("subheadline").value = "";
+    // Not blank: blank reads as "you decide" to the image model, which is
+    // vaguer than the region the copywriter picked for this photograph.
+    $("placement").value = state.options[0]?.placement || "center";
+    $("editorMode").textContent = "your words";
+  } else {
+    const o = state.options[which];
+    $("headline").value = o.headline;
+    $("subheadline").value = o.subheadline || "";
+    $("placement").value = o.placement || "center";
+    $("editorMode").textContent = `option ${Number(which) + 1}, editable`;
+  }
+  $("editor").hidden = false;
+  check();
+  if (which === "own") $("headline").focus();
+}
+
+/* ──────────────────────────────────────────────────── stage 2 → render */
+$("btnRender").addEventListener("click", async () => {
+  clearError();
+  $("btnRender").disabled = true;
+  $("busy2").hidden = false;
+  const stop = elapse($("el2"));
+
+  // Never: the words are decided, and alt text already came back from
+  // /copy-options, which is the call that has the brief.
+  const form = baseForm({ withBrief: false });
+  if ($("quality").value) form.append("quality", $("quality").value);
+  const font = tidy($("fontFamily").value);
+  if (font) form.append("font_family", font);
+  form.append("headline", tidy($("headline").value));
+  const sub = tidy($("subheadline").value);
+  if (sub) form.append("subheadline", sub);           // only valid with a headline
+  if ($("placement").value) form.append("placement", $("placement").value);
+
+  try {
+    const body = await post("/ad-images/render", form);
+    state.render = body;
+    showResult(body);
+    goto(3);
+  } catch (err) {
+    showError(readError(err));
+  } finally {
+    stop(); $("busy2").hidden = true; check();
+  }
+});
+
+function showResult(body) {
+  $("outImg").src = `data:${body.image.media_type};base64,${body.image.b64}`;
+  $("outImg").alt = body.alt_text || state.altText
+    || `Rendered asset reading: ${body.ad_copy.headline}`;
+
+  $("outWho").textContent = body.copy_source === "caller"
+    ? "Your words, as set" : "Written by the copywriter";
+  $("outH").textContent = body.ad_copy.headline;
+  $("outS").textContent = body.ad_copy.subheadline || "";
+  $("outS").hidden = !body.ad_copy.subheadline;
+
+  const spec = [
+    ["Size", `${body.image.width} × ${body.image.height}`, false],
+    ["Format", `${body.image.image_format} · ${bytes(body.image.size_bytes)}`, false],
+    ["Slot", body.asset.label, false],
+    ["Placement", body.ad_copy.placement.replace(/_/g, " "), false],
+    ["Typeface", body.font_family || "model's choice", Boolean(body.font_family)],
+    ["Words from", body.copy_source, body.copy_source === "caller"],
+    ["Quality", body.quality, false],
+    ["Image model", body.model, false],
+    ["Copy model", body.copy_model, false],
+  ];
+  $("outSpec").innerHTML = spec.map(([k, v, hot]) =>
+    `<div><dt>${esc(k)}</dt><dd class="${hot ? "accent" : ""}">${esc(v)}</dd></div>`).join("");
+
+  // From the copy call, not the render -- the render was sent no brief.
+  const alt = body.alt_text || state.altText;
+  if (alt) {
+    $("outAlt").hidden = false;
+    $("outAlt").innerHTML =
+      `<div class="t">alt text · quoted from the brief</div>${esc(alt)}`;
+  } else { $("outAlt").hidden = true; }
+
+  if (body.warnings?.length) {
+    $("outWarn").hidden = false;
+    $("outWarn").innerHTML = `<div class="t">${body.warnings.length} warning${
+      body.warnings.length === 1 ? "" : "s"}</div><ul>${
+      body.warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>`;
+  } else { $("outWarn").hidden = true; }
+
+  $("outNotice").innerHTML = `<div class="t">notice</div>${esc(body.rendering_notice || "")}`;
+  $("outRaw").textContent = JSON.stringify(
+    { ...body, image: { ...body.image, b64: `<${body.image.b64.length} chars omitted>` } }, null, 2);
+}
+
+$("btnDownload").addEventListener("click", () => {
+  const b = state.render;
+  if (!b) return;
+  const a = document.createElement("a");
+  a.href = `data:${b.image.media_type};base64,${b.image.b64}`;
+  a.download = `${b.asset.platform}-${b.asset.asset_type}-${b.image.width}x${b.image.height}.${b.image.image_format.toLowerCase()}`;
+  a.click();
+});
+
+/* ─────────────────────────────────────────────────────────────── errors */
+function readError(err) {
+  const body = err?.body;
+  if (body?.code) return { code: body.code, message: body.message, details: body.details };
+  if (Array.isArray(body?.detail)) {
+    return {
+      code: "validation_error",
+      message: "Rejected before it reached the service.",
+      items: body.detail.map((d) => `${(d.loc || []).join(" → ")}: ${d.msg}`),
+    };
+  }
+  if (body) return { code: "http_" + err.status, message: JSON.stringify(body) };
+  return { message: err?.message || String(err) };
+}
+
+function showError(e) {
+  const items = e.items
+    || (e.details ? Object.entries(e.details).map(([k, v]) => `${k}: ${JSON.stringify(v)}`) : []);
+  $("errSlot").innerHTML =
+    `<div class="msg err"><div class="t">${esc(e.code || "error")}</div>${
+      esc(e.message || "Something went wrong.")}${
+      items.length ? `<ul>${items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>` : ""}</div>`;
+  $("errSlot").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+function clearError() { $("errSlot").innerHTML = ""; }
+
+/* Both calls are slow enough to look stuck without a visible count. */
+function elapse(node) {
+  const t0 = Date.now();
+  const tick = () => { node.textContent = `${((Date.now() - t0) / 1000).toFixed(0)}s`; };
+  tick();
+  const id = setInterval(tick, 1000);
+  return () => clearInterval(id);
+}
+
+boot();
+check();
+</script>
+</body>
+</html>

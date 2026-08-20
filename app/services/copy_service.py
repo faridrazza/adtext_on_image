@@ -10,6 +10,7 @@ from __future__ import annotations
 import base64
 import logging
 import re
+from dataclasses import dataclass
 from enum import Enum
 
 from openai import AsyncOpenAI, OpenAIError
@@ -65,6 +66,52 @@ class AdCopy(BaseModel):
             "auditing, never rendered."
         )
     )
+
+
+class AdCopyDraft(BaseModel):
+    """One candidate set of words. Carries no placement, deliberately."""
+
+    headline: str = Field(description="The headline, distilled from the brief.")
+    subheadline: str | None = Field(
+        description="Optional supporting line, or null."
+    )
+    source_support: str = Field(
+        description=(
+            "The fragment of the brief that makes the headline true. Used for "
+            "auditing, never rendered."
+        )
+    )
+
+
+class AdCopyOptions(BaseModel):
+    """Several candidate wordings, and one placement for the photograph.
+
+    Placement sits on the batch rather than on each option on purpose. It is a
+    judgement about the photograph -- which region is calm and clear of faces
+    -- so it has exactly one right answer per image, and the single-option path
+    asks for it exactly once. Putting it on each option would ask the same
+    question three times; a model asked three times sometimes answers
+    differently, and the differing answers are the worse ones. This keeps the
+    decision identical in kind to the single-option path.
+    """
+
+    options: list[AdCopyDraft] = Field(
+        description="Distinct wordings for the same asset, best first."
+    )
+    placement: Placement = Field(
+        description=(
+            "The one region of the photograph with room for the text. A single "
+            "decision about this image, shared by every option."
+        )
+    )
+
+
+@dataclass(frozen=True)
+class CopyOptionSet:
+    """What survived the gate, and what was thrown away getting there."""
+
+    options: list[AdCopy]
+    rejected: list[str]
 
 
 def _words(text: str) -> int:
@@ -190,13 +237,111 @@ class CopyService:
             details={"violations": problems},
         )
 
-    async def _call(self, instructions: str, content: list[dict]) -> AdCopy:
+    async def write_options(
+        self,
+        *,
+        image_png: bytes,
+        source_text: str,
+        spec: AssetSpec,
+        width: int,
+        height: int,
+        count: int = prompt_service.COPY_OPTION_COUNT,
+    ) -> CopyOptionSet:
+        """Write several options for a person to choose between.
+
+        Every option goes through the same deterministic gate as the
+        single-option path, so a headline that could never be rendered is
+        never offered. Options that fail are dropped, not returned; the model
+        gets one chance to replace them.
+        """
+        instructions = prompt_service.build_copy_options_instructions(
+            spec, width, height, count
+        )
+        encoded = base64.b64encode(image_png).decode("ascii")
+        brief = f"BRIEF (your only source of facts):\n{source_text.strip()}"
+        accepted: list[AdCopy] = []
+        rejected: list[str] = []
+        seen: set[str] = set()
+        problems: list[str] = []
+        placement: Placement | None = None
+
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            content: list[dict] = [
+                {"type": "input_text", "text": brief},
+                {
+                    "type": "input_image",
+                    "image_url": f"data:image/png;base64,{encoded}",
+                    "detail": "low",
+                },
+            ]
+            if problems:
+                content.append({
+                    "type": "input_text",
+                    "text": (
+                        f"{len(accepted)} of your options were kept. The rest "
+                        "were rejected:\n- "
+                        + "\n- ".join(problems)
+                        + f"\nReturn {count - len(accepted)} replacements so "
+                        "none of these apply."
+                    ),
+                })
+
+            batch = await self._call(instructions, content, AdCopyOptions)
+            # One placement for the photograph, fixed by the first batch so a
+            # retry cannot move the words that were already accepted.
+            if placement is None:
+                placement = batch.placement
+            problems = []
+            for draft in batch.options:
+                option = AdCopy(
+                    headline=draft.headline,
+                    subheadline=draft.subheadline,
+                    placement=placement,
+                    source_support=draft.source_support,
+                )
+                violations = check_copy(option, source_text, spec)
+                if violations:
+                    rejected.extend(violations)
+                    problems.extend(violations)
+                    continue
+                # Three rewordings of one line is not three options.
+                key = option.headline.strip().casefold()
+                if key in seen:
+                    continue
+                seen.add(key)
+                accepted.append(option)
+
+            if len(accepted) >= count or not problems:
+                break
+            logger.warning(
+                "Copy options rejected on attempt %d: %s", attempt, problems
+            )
+
+        if not accepted:
+            raise CopyGenerationError(
+                "None of the generated copy options met the accuracy and "
+                "length rules.",
+                details={"violations": rejected},
+            )
+
+        logger.info(
+            "Copy options: kept %d of %d requested, %d rejected",
+            len(accepted[:count]), count, len(rejected),
+        )
+        return CopyOptionSet(options=accepted[:count], rejected=rejected)
+
+    async def _call(
+        self,
+        instructions: str,
+        content: list[dict],
+        text_format: type[BaseModel] = AdCopy,
+    ):
         try:
             response = await self._client.responses.parse(
                 model=self._model,
                 instructions=instructions,
                 input=[{"role": "user", "content": content}],
-                text_format=AdCopy,
+                text_format=text_format,
             )
         except OpenAIError as exc:
             logger.exception("Copy request failed")

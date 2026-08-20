@@ -8,7 +8,7 @@ from app.api.controller import AdImageController
 from app.api.dependencies import get_controller
 from app.core.config import Settings
 from app.main import app
-from app.services.copy_service import AdCopy, Placement
+from app.services.copy_service import AdCopy, CopyOptionSet, Placement
 from app.services.openai_image_service import RenderResult, plan_size
 
 
@@ -62,6 +62,14 @@ class StubCopyModel:
         self.placement = Placement.BOTTOM_LEFT
         self.last_source_text: str | None = None
         self.calls = 0
+        self.option_calls = 0
+        # Mirrors the real service: some options carry a supporting line and
+        # some do not. In the 49-asset batch run, 14 did and 35 did not.
+        self.options: list[tuple[str, str | None]] = [
+            ("Fresh Colour, Flawless Finish", "Careful prep, clean edges"),
+            ("Colour That Lasts", None),
+            ("Every Wall, Considered", None),
+        ]
 
     async def write(self, *, image_png, source_text, spec, width, height) -> AdCopy:
         self.calls += 1
@@ -71,6 +79,24 @@ class StubCopyModel:
             subheadline=self.subheadline,
             placement=self.placement,
             source_support=source_text[:60],
+        )
+
+    async def write_options(
+        self, *, image_png, source_text, spec, width, height, count=3
+    ) -> CopyOptionSet:
+        self.option_calls += 1
+        self.last_source_text = source_text
+        return CopyOptionSet(
+            options=[
+                AdCopy(
+                    headline=headline,
+                    subheadline=subheadline,
+                    placement=self.placement,
+                    source_support=source_text[:60],
+                )
+                for headline, subheadline in self.options[:count]
+            ],
+            rejected=[],
         )
 
 

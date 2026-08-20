@@ -9,6 +9,7 @@ from app.api.dependencies import get_controller
 from app.api.schemas import (
     AssetTypeInfo,
     CapabilitiesResponse,
+    CopyOptionsResponse,
     ErrorResponse,
     ImageQuality,
     PlatformInfo,
@@ -17,6 +18,8 @@ from app.api.schemas import (
 from app.core.config import get_settings
 from app.domain import platforms
 from app.domain.platforms import AssetType, Platform
+from app.services import prompt_service
+from app.services.copy_service import Placement
 
 router = APIRouter(prefix="/api/v1")
 
@@ -52,6 +55,8 @@ async def capabilities() -> CapabilitiesResponse:
                         max_bytes=spec.max_bytes,
                         accepts_text_overlay=spec.allows_text_overlay,
                         requires_alt_text=spec.requires_alt_text,
+                        headline_word_budget=prompt_service.word_budget(spec)[0],
+                        support_word_budget=prompt_service.word_budget(spec)[1],
                     )
                     for spec in platforms.specs_for(platform)
                 ],
@@ -59,6 +64,60 @@ async def capabilities() -> CapabilitiesResponse:
             for platform in Platform
         ],
         model=get_settings().openai_image_model,
+    )
+
+
+@router.post(
+    "/ad-images/copy-options",
+    response_model=CopyOptionsResponse,
+    tags=["ad-images"],
+    responses={
+        422: {"model": ErrorResponse},
+        502: {"model": ErrorResponse},
+    },
+)
+async def write_copy_options(
+    image: UploadFile = File(..., description="Source image (JPEG, PNG or WebP)."),
+    source_text: str = Form(
+        ...,
+        description=(
+            "The only permitted source of facts for the generated copy. "
+            "Nothing not supported by this text may appear on the image."
+        ),
+    ),
+    platform: Platform = Form(..., description="Target advertising platform."),
+    asset_type: AssetType = Form(
+        ..., description="Asset slot within the platform."
+    ),
+    width: int | None = Form(
+        None,
+        description=(
+            "Optional output width, matching the render request so the copy is "
+            "written for the size it will be set at. Must be sent with height."
+        ),
+    ),
+    height: int | None = Form(
+        None,
+        description="Optional output height. Must be sent with width.",
+    ),
+    controller: AdImageController = Depends(get_controller),
+) -> CopyOptionsResponse:
+    """Write several copy options for this image, without rendering anything.
+
+    Stage one of a two-step flow: show the options to a person, let them pick
+    one, edit it, or write their own, then send the words they settled on to
+    ``/ad-images/render``. Each option carries its own placement -- send that
+    back too, to keep the layout the words were judged against.
+
+    Costs one text call. No image is generated here.
+    """
+    return await controller.write_copy_options(
+        upload=await image.read(),
+        source_text=source_text,
+        platform=platform,
+        asset_type=asset_type,
+        width=width,
+        height=height,
     )
 
 
@@ -73,11 +132,13 @@ async def capabilities() -> CapabilitiesResponse:
 )
 async def render_ad_image(
     image: UploadFile = File(..., description="Source image (JPEG, PNG or WebP)."),
-    source_text: str = Form(
-        ...,
+    source_text: str | None = Form(
+        None,
         description=(
-            "The only permitted source of facts for the generated copy. "
-            "Nothing not supported by this text may appear on the image."
+            "The brief the copywriter draws its facts from. Required only when "
+            "you do not send a headline. When you do send one there is nothing "
+            "to write, so the brief is not needed -- it is also used to quote "
+            "alt text from, so send it if the slot requires alt text."
         ),
     ),
     platform: Platform = Form(..., description="Target advertising platform."),
@@ -113,10 +174,41 @@ async def render_ad_image(
             "behaviour when no brand kit applies."
         ),
     ),
+    headline: str | None = Form(
+        None,
+        description=(
+            "Words to set, chosen by a person: an option from "
+            "/ad-images/copy-options, an edit of one, or their own. Sending "
+            "this skips the copywriter and renders these words as they are. "
+            "Omit it to have the copy written for you."
+        ),
+    ),
+    subheadline: str | None = Form(
+        None,
+        description=(
+            "Optional supporting line to set beneath the headline. Only "
+            "accepted together with headline."
+        ),
+    ),
+    placement: Placement | None = Form(
+        None,
+        description=(
+            "Where the words sit, from the chosen option. Only accepted "
+            "together with headline; omit it and the image model finds the "
+            "clear space itself."
+        ),
+    ),
     controller: AdImageController = Depends(get_controller),
 ) -> RenderResponse:
     """Set approved ad text over the supplied image. Text only -- no
     call-to-action, logo, icon or graphic is added.
+
+    Two ways to use it. Send ``source_text`` and no ``headline``, and the
+    copywriter reads the photograph and that brief and decides the words. Send a
+    ``headline``
+    -- picked or edited by a person, typically from ``/ad-images/copy-options``
+    -- and the copywriter is skipped and those exact words are set. The
+    rendering itself is identical either way.
 
     Output dimensions are derived from ``platform`` and ``asset_type``; supply
     ``width`` and ``height`` only to deliberately override them.
@@ -130,4 +222,7 @@ async def render_ad_image(
         height=height,
         quality=quality,
         font_family=font_family,
+        headline=headline,
+        subheadline=subheadline,
+        placement=placement,
     )

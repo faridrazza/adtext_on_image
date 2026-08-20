@@ -41,6 +41,11 @@ The job is split into two steps, because one AI call cannot do both well.
 pasted the whole paragraph onto the picture. An image AI treats any text in its
 prompt as *"draw this"*. Now it only ever receives the final six words.
 
+**Putting a person between the steps.** Because the two steps are already
+separate, step 1 can be run on its own to get **three** options for someone to
+choose from, edit, or replace with their own words — then step 2 renders what
+they settled on. See *Letting the user choose the words* below.
+
 ---
 
 ## Setup
@@ -69,25 +74,116 @@ on it. See **Integrating from a real front-end** below for production use.
 
 ---
 
-## The endpoint
+## Every endpoint, at a glance
+
+Six routes. Two of them do the work.
+
+| Route | Method | What it is |
+|---|---|---|
+| `/api/v1/health` | GET | Liveness. `{"status":"ok"}`. Takes nothing |
+| `/api/v1/capabilities` | GET | Platforms, slots, sizes, formats and word budgets. Takes nothing |
+| `/api/v1/ad-images/copy-options` | POST | **Writes 3 copy options. Renders no image** |
+| `/api/v1/ad-images/render` | POST | **Renders the image** |
+| `/` | GET | The original single-call demo console (HTML) |
+| `/studio` | GET | The two-step demo console (HTML) |
+
+FastAPI also serves `/docs`, `/redoc` and `/openapi.json`.
+
+---
+
+### `POST /api/v1/ad-images/copy-options`
+
+Body type: `multipart/form-data`. **Six fields, four required. Nothing else is
+accepted.**
+
+| Field | Required | Accepts |
+|---|---|---|
+| `image` | **yes** | file — JPEG, PNG or WebP, up to 30 MB |
+| `source_text` | **yes** | text, minimum 5 words |
+| `platform` | **yes** | `google_ads_pmax` · `meta` · `google_business_profile` · `website` |
+| `asset_type` | **yes** | `square` `landscape` `portrait` `logo_square` `logo_wide` `feed_square` `feed_portrait` `story_reel` `facebook_landscape` `photo` `hero` `section` `sidebar_card` |
+| `width` | no | integer 64–3840. Must be sent with `height` |
+| `height` | no | integer 64–3840. Must be sent with `width` |
+
+There is **no `quality` and no `font_family`** here. Nothing is rendered, so
+they would have nothing to act on.
+
+Returns:
+
+| Field | Type |
+|---|---|
+| `options` | array — each entry has `headline`, `subheadline`, **`placement`**, `source_support` |
+| `source_image` | `width`, `height`, `image_format`, `size_bytes` |
+| `asset` | `platform`, `asset_type`, `label`, `output_width`, `output_height`, `dimension_source` |
+| `copy_model` | string |
+| `headline_word_budget` | integer — for a UI word counter |
+| `support_word_budget` | integer — `0` means the slot has no room for a second line |
+| `alt_text` | string or `null` |
+| `warnings` | array of strings |
+
+**`placement` is inside each option, not at the top level.** Every option
+carries the same value: the copywriter makes one placement decision per
+photograph, then all three options are stamped with it. So whichever option the
+user picks, the region you send back is the same one.
+
+Errors: `422` (bad request or unusable brief), `502` (copy model failed), both as
+`{ code, message, details }`.
+
+---
+
+### `POST /api/v1/ad-images/render`
+
+Body type: `multipart/form-data`. **Ten fields, three required.**
+
+| Field | Required | Accepts |
+|---|---|---|
+| `image` | **yes** | file — JPEG, PNG or WebP, up to 30 MB |
+| `platform` | **yes** | `google_ads_pmax` · `meta` · `google_business_profile` · `website` |
+| `asset_type` | **yes** | as above |
+| `source_text` | see below | text, minimum 5 words. **Leave it out when you send `headline`** |
+| `headline` | no | text, ≤120 characters and ≤20 words. **Sending it skips the copywriter** |
+| `subheadline` | no | text, ≤160 characters and ≤30 words. Only accepted **with** `headline` |
+| `placement` | no | `top_left` `top_center` `top_right` `center_left` `center` `center_right` `bottom_left` `bottom_center` `bottom_right`. Only accepted **with** `headline` |
+| `width` | no | integer 64–3840. Must be sent with `height` |
+| `height` | no | integer 64–3840. Must be sent with `width` |
+| `quality` | no | `low` (default) · `medium` · `high` · `auto` |
+| `font_family` | no | typeface name, ≤40 characters — letters, digits, spaces and `. ' - + &` |
+
+Returns:
+
+| Field | Type |
+|---|---|
+| `image` | `b64`, `media_type`, `image_format`, `width`, `height`, `size_bytes` |
+| `ad_copy` | `headline`, `subheadline`, `placement`, `source_support` — the words actually set |
+| `source_image` | `width`, `height`, `image_format`, `size_bytes` |
+| `asset` | `platform`, `asset_type`, `label`, `output_width`, `output_height`, `dimension_source` |
+| `model` | image model id |
+| `copy_model` | copy model id |
+| `quality` | quality actually used |
+| `copy_source` | `"model"` or `"caller"` — who chose the words |
+| `font_family` | echoed back, or `null` |
+| `alt_text` | string or `null` |
+| `warnings` | array of strings |
+| `rendering_notice` | always present; the output is model-generated |
+
+Errors: `422`, `502`, same shape.
+
+---
+
+## Using the render endpoint
 
 ```
 POST http://127.0.0.1:8000/api/v1/ad-images/render
 Body type: form-data
 ```
 
-These seven fields are the entire contract. Anything else you send is ignored.
+The field list is above, under *Every endpoint, at a glance* — deliberately in
+one place only, so there is no second copy to fall out of date. Anything you send
+that is not in it is ignored.
 
-| Field | Required | Type | What to send |
-|---|---|---|---|
-| `image` | **yes** | **file part** | The photo — JPEG, PNG or WebP. Max 30 MB (31,457,280 bytes) |
-| `source_text` | **yes** | text | Your text about the business. Minimum 5 words |
-| `platform` | **yes** | text | `google_ads_pmax` · `meta` · `google_business_profile` · `website` |
-| `asset_type` | **yes** | text | The slot — see the table below. Must belong to that platform |
-| `width` | no | integer | Custom width, 64–3840. Must be sent **with** `height` |
-| `height` | no | integer | Custom height, 64–3840. Must be sent **with** `width` |
-| `quality` | no | text | `low` (default) · `medium` · `high` · `auto` |
-| `font_family` | no | text | Brand-kit typeface, e.g. `Arial`. Omit to let the model choose |
+The rest of this section is the detail behind those fields: how dimensions are
+decided, the brand-kit typeface, when to send the brief, and how to let a person
+choose the words.
 
 ### Does it accept dimensions?
 
@@ -155,6 +251,151 @@ Arial-like grotesque letterforms — verified with side-by-side renders where
 metric-exact glyph fidelity cannot be guaranteed. If brand compliance requires
 provably exact glyphs, that needs deterministic compositing, which is a
 different approach with a different tradeoff.
+
+### When to send `source_text`
+
+`source_text` is optional on the render endpoint. The rule is one line:
+
+> **If you send `headline`, do not send `source_text`.**
+
+| You send | `source_text` | Why |
+|---|---|---|
+| `headline` (with or without `subheadline`) | **do not send it** | You already decided the words. There is nothing left to write |
+| no `headline` | **required** | The copywriter needs a brief — it is the only thing it may take facts from |
+| neither | — | `422 insufficient_source_text`. Nothing to write from, nothing to set |
+
+**Why not send it anyway?** Because nothing would use it. The image model has
+never seen `source_text` — that is the whole reason this service splits
+copywriting from rendering. Once you supply the words, the brief has no reader
+left on that call, so sending it only ships bytes the service throws away.
+
+So in the two-step flow the brief travels **once**:
+
+```
+POST /ad-images/copy-options    image + source_text + platform + asset_type
+POST /ad-images/render          image + headline + subheadline + placement
+                                                   ^ no source_text
+```
+
+**Alt text also comes from the copy call**, so you lose nothing by leaving the
+brief out of the render. `/ad-images/copy-options` returns `alt_text`, quoted
+from the brief it was given — keep that value and use it when you publish. The
+render endpoint still returns `alt_text` for the single-call flow, which does
+send a brief; with no brief the field is simply `null`.
+
+### Letting the user choose the words
+
+By default one call does everything: the copywriter decides the words and the
+image model sets them. To put a person in the middle instead, use two calls.
+
+```
+POST /api/v1/ad-images/copy-options     3 options, no image rendered
+        │
+   the user picks one, edits it, or writes their own
+        │
+POST /api/v1/ad-images/render           + headline, subheadline, placement
+```
+
+**Stage 1 — `POST /api/v1/ad-images/copy-options`.** Same form fields as the
+render endpoint minus `quality` and `font_family`; send the same `platform`,
+`asset_type`, `width` and `height` you intend to render at, because the copy is
+written for that slot and size. It returns three options and **renders nothing**,
+so it costs one text call rather than a text call plus an image call:
+
+```json
+{
+  "options": [
+    { "headline": "Warmth, laid wide",
+      "subheadline": "Wood-look elegance for rooms with a view",
+      "placement": "bottom_left",
+      "source_support": "Wide-plank wood-look flooring that brings warmth..." },
+    { "headline": "Elevate the room from below",
+      "subheadline": null,
+      "placement": "bottom_center",
+      "source_support": "brings warmth and elegance to any room" },
+    { "headline": "Where the view meets elegance",
+      "subheadline": "A wide-plank wood look underfoot",
+      "placement": "center_left",
+      "source_support": "Wide-plank wood-look flooring that brings warmth..." }
+  ],
+  "copy_model": "gpt-5.6",
+  "headline_word_budget": 8,
+  "support_word_budget": 12,
+  "warnings": []
+}
+```
+
+**`subheadline` is `null` on some options, and that is correct.** The copywriter
+returns a supporting line only where it adds something the headline cannot carry.
+Over the 49-asset batch run, 14 assets had one and 35 did not. Where
+`support_word_budget` is `0` the slot has no room for a second line at all
+(Website → Sidebar Card), so hide the field.
+
+**Stage 2 — the render endpoint, with `headline`.** Sending `headline` skips the
+copywriter and sets those exact words. `subheadline` and `placement` are only
+accepted alongside it; either one on its own is `422 invalid_request`.
+
+```bash
+-F "headline=Warmth, laid wide" \
+-F "subheadline=Wood-look elegance for rooms with a view" \
+-F "placement=bottom_left"
+```
+
+You no longer need to resend `source_text` on this second call — the words are
+already decided, so leave it out.
+
+`placement` sits **inside each option**, not at the top of the response. All
+three options carry the same value, because the copywriter decides placement
+once per photograph rather than once per option. Verified across six different
+photographs: four different regions were chosen — `bottom_center`,
+`bottom_right`, `top_left`, `top_right` — and within every image all three
+options agreed.
+
+Send back the `placement` that came with the option the user started from — it is
+the region the copywriter chose after looking at the photograph for clear space.
+If the user wrote something from scratch and has no placement, omit it and the
+image model finds the clear space itself. Do not invent a default.
+
+The response gains `"copy_source": "caller"`, or `"model"` when the copywriter
+wrote them. `ad_copy.source_support` is `""` for a person's words — there is no
+fragment of the brief to point at.
+
+**Nothing about the rendering changes.** The render prompt takes the headline,
+supporting line and placement as plain values and cannot tell where they came
+from, so the typography is identical either way. Proven by hashing the prompt
+built from the copy model's output against the prompt built from the same three
+values arriving as form fields:
+
+```
+model-written words : c0dbb41c80f52c6144cae54911dd464b67127296b45f67876c0e402c4baaa897
+caller-sent words   : c0dbb41c80f52c6144cae54911dd464b67127296b45f67876c0e402c4baaa897
+IDENTICAL           : True
+```
+
+**Words a person supplies are not fact-checked.** The accuracy rules still police
+all three generated options — an option with a figure that is not in the brief is
+dropped before it is offered — but they do not apply to what a person types. A
+headline of `20% Off Every Wall` renders without complaint, on the grounds that
+whoever typed and approved it is its author.
+
+What *is* enforced, because these words are interpolated into the image prompt:
+
+| Rule | Behaviour |
+|---|---|
+| Newlines, tabs, control characters | collapsed to single spaces |
+| Straight `"` quotes | converted to typographic `“ ”` |
+| Headline over 120 characters or 20 words | `422 invalid_request` |
+| Supporting line over 160 characters or 30 words | `422 invalid_request` |
+| Blank or whitespace-only `headline` | treated as absent; the copywriter runs |
+
+The quote conversion is not cosmetic. The render prompt sets the words inside
+`"..."`, so a straight quote would close that string early and everything after
+it would read to the image model as a fresh instruction.
+
+**The image is uploaded twice**, once per call. The service holds nothing between
+them, which is what lets it run behind more than one worker with no shared cache.
+The browser already holds the `File` from the picker, so re-attaching it is one
+line.
 
 ### Using Postman
 
@@ -529,13 +770,21 @@ exact match with your original cannot be guaranteed. Every response says this in
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-188 tests, all passing. Both AI calls are faked, so the suite is free to run
+244 tests, all passing. Both AI calls are faked, so the suite is free to run
 and needs no API key.
 
 Among them, the guards on the approved typography: the render prompt with no
 `font_family` is asserted to still carry the original typeface instruction word
-for word, and supplying a font is asserted to change **exactly one line** of
-the prompt and nothing else.
+for word, supplying a font is asserted to change **exactly one line** of the
+prompt and nothing else, and a prompt built from words a person supplied is
+asserted to be byte-identical to one built from the copy model's own output.
+
+`verify_typography.py` at the repository root checks the same guarantees as a
+standalone script, with no API key and no spend:
+
+```powershell
+.\.venv\Scripts\python.exe verify_typography.py
+```
 
 ---
 
@@ -553,6 +802,7 @@ app/
 │   └── platforms.py              every platform size and rule
 └── services/
     ├── copy_service.py           step 1 — writes and checks the headline
+    │                             (one, or three to choose from)
     ├── openai_image_service.py   step 2 — renders it
     ├── image_service.py          step 3 — resize, format, file size
     └── prompt_service.py         the two prompts

@@ -34,6 +34,22 @@ MAX_ALT_TEXT_CHARS = 125
 MAX_FONT_FAMILY_CHARS = 40
 _FONT_FAMILY_PATTERN = re.compile("^[A-Za-z][A-Za-z0-9 .+&'-]*$")
 
+# Caller-supplied words reach the image prompt verbatim, exactly as
+# font_family does. These are safety ceilings, not the per-slot legibility
+# budget in _WORD_BUDGETS: a human who has chosen their own words is trusted
+# with them, but an instruction-shaped paragraph must not reach the model.
+MAX_USER_HEADLINE_CHARS = 120
+MAX_USER_HEADLINE_WORDS = 20
+MAX_USER_SUPPORT_CHARS = 160
+MAX_USER_SUPPORT_WORDS = 30
+
+# Newlines and control characters would break the single quoted line the
+# render prompt puts the words on.
+_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+
+# How many copy options the options endpoint asks for.
+COPY_OPTION_COUNT = 3
+
 # Headline / supporting-line word budgets. Small canvases get fewer words
 # because anything longer stops being legible at render size.
 _WORD_BUDGETS: dict[AssetType, tuple[int, int]] = {
@@ -117,6 +133,60 @@ def clean_font_family(value: str | None) -> str | None:
     return cleaned
 
 
+def _curly(value: str) -> str:
+    """Turn straight double quotes into typographic ones, in pairs.
+
+    The render prompt sets the words inside "..."; a straight quote in the
+    words would close that string early and everything after it would read to
+    the image model as a fresh instruction. Curly quotes cannot, and they are
+    what a designer would set anyway.
+    """
+    out = []
+    opening = True
+    for char in value:
+        if char == '"':
+            out.append("“" if opening else "”")
+            opening = not opening
+        else:
+            out.append(char)
+    return "".join(out)
+
+
+def clean_user_copy(
+    value: str | None,
+    *,
+    field: str,
+    max_chars: int,
+    max_words: int,
+) -> str | None:
+    """Sanitise words the caller chose themselves, or None when none were sent.
+
+    Deliberately does **not** apply the accuracy or call-to-action rules: those
+    police what the *model* may invent, and a person who has typed and approved
+    their own headline is the author of record. What this does police is
+    structure, because the value is interpolated into the image prompt.
+    """
+    if value is None:
+        return None
+    cleaned = " ".join(_CONTROL_CHARS.sub(" ", value).split())
+    if not cleaned:
+        return None
+    if len(cleaned) > max_chars:
+        raise InvalidRequestError(
+            f"{field} is {len(cleaned)} characters; the maximum is "
+            f"{max_chars}.",
+            details={field: cleaned[:120], "maximum_chars": max_chars},
+        )
+    words = len(cleaned.split())
+    if words > max_words:
+        raise InvalidRequestError(
+            f"{field} is {words} words; the maximum is {max_words}. This is a "
+            "headline, not a paragraph.",
+            details={field: cleaned[:120], "maximum_words": max_words},
+        )
+    return _curly(cleaned)
+
+
 def word_budget(spec: AssetSpec) -> tuple[int, int]:
     return _WORD_BUDGETS.get(spec.asset_type, _DEFAULT_WORD_BUDGET)
 
@@ -184,8 +254,47 @@ exact fragment of the brief that supports your headline.\
 """
 
 
+def build_copy_options_instructions(
+    spec: AssetSpec,
+    width: int,
+    height: int,
+    count: int = COPY_OPTION_COUNT,
+) -> str:
+    """Brief the copywriter for several options instead of one.
+
+    Built by appending to :func:`build_copy_instructions`, never by restating
+    it, so the word limits and the accuracy rules cannot drift apart from the
+    single-option path.
+    """
+    return f"""{build_copy_instructions(spec, width, height)}
+
+RETURN {count} OPTIONS
+Return exactly {count} wordings in one list, plus one placement for the
+photograph. Every rule above applies to each wording in full: the same word
+limits, the same accuracy rules, the same supporting-line rule.
+
+Make them genuinely different routes to the same truth, not one line reworded
+{count} times. Vary the angle: what the reader gains, what they avoid, the craft
+behind the work, the feeling of the place. No two options may open with the same
+words.
+
+The placement is a single decision about this photograph, made exactly as it
+would be for one headline -- not one choice per option.
+
+Order them best first -- option 1 is the one you would run.
+Each option carries its own supporting line and its own supporting fragment,
+because the reader may choose any one of them."""
+
+
 # --------------------------------------------------------------------------
 # Stage 2 -- the renderer (image model, never sees the source text)
+
+# Sent as the placement when the caller supplied their own words and no
+# placement. It is deliberately absent from _PLACEMENT_PHRASING below, so the
+# prompt falls through to "over a calm area of the image" and the image model
+# finds the clear space itself -- the same judgement the copy model would have
+# made. Nothing about the prompt is special-cased for it.
+PLACEMENT_AUTO = "auto"
 
 _PLACEMENT_PHRASING = {
     "top_left": "in the upper-left area",

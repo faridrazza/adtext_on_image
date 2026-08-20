@@ -38,7 +38,11 @@ class ApprovedCopy(BaseModel):
     subheadline: str | None = None
     placement: str
     source_support: str = Field(
-        description="The fragment of source_text that makes the headline true."
+        default="",
+        description=(
+            "The fragment of source_text that makes the headline true. Empty "
+            "when the caller supplied the words themselves."
+        ),
     )
 
 
@@ -72,6 +76,55 @@ class AssetInfo(BaseModel):
     )
 
 
+class CopyOption(BaseModel):
+    """One candidate copy for the asset, for a person to choose between."""
+
+    headline: str
+    subheadline: str | None = Field(
+        default=None,
+        description=(
+            "Supporting line, or null. The copywriter returns one only where "
+            "it adds something the headline cannot carry, so many options "
+            "legitimately have none."
+        ),
+    )
+    placement: str = Field(
+        description=(
+            "Region of the photograph this option was written for. Send it "
+            "back with the render request to keep the layout it was judged "
+            "against."
+        )
+    )
+    source_support: str = Field(
+        description="The fragment of source_text that makes this headline true."
+    )
+
+
+class CopyOptionsResponse(BaseModel):
+    """Stage 1 on its own: the words, with no image rendered."""
+
+    options: list[CopyOption] = Field(
+        description=(
+            "Distinct copy options, best first. A person picks one, edits it, "
+            "or writes their own, and sends the result to the render endpoint."
+        )
+    )
+    source_image: SourceImageInfo
+    asset: AssetInfo
+    copy_model: str
+    headline_word_budget: int = Field(
+        description="Headline word limit for this slot, for a UI counter."
+    )
+    support_word_budget: int = Field(
+        description=(
+            "Supporting-line word limit for this slot. Zero means the slot has "
+            "no room for one, so the field should be hidden."
+        )
+    )
+    alt_text: str | None = None
+    warnings: list[str] = Field(default_factory=list)
+
+
 class RenderResponse(BaseModel):
     image: RenderedImage
     # Not named `copy`: that shadows BaseModel.copy on pydantic models.
@@ -86,6 +139,13 @@ class RenderResponse(BaseModel):
     model: str
     copy_model: str
     quality: str = Field(description="Render quality actually used.")
+    copy_source: str = Field(
+        default="model",
+        description=(
+            "'model' when the copywriter wrote the words, 'caller' when they "
+            "were supplied on the request."
+        ),
+    )
     font_family: str | None = Field(
         default=None,
         description=(
@@ -125,6 +185,8 @@ class AssetTypeInfo(BaseModel):
     max_bytes: int | None = None
     accepts_text_overlay: bool
     requires_alt_text: bool
+    headline_word_budget: int
+    support_word_budget: int
 
 
 class PlatformInfo(BaseModel):

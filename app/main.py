@@ -14,8 +14,12 @@ from app.api.schemas import ErrorResponse
 from app.core.config import get_settings
 from app.core.errors import AdImageError
 
-# Demo console, served same-origin so it can call the API without CORS setup.
-DEMO_UI = Path(__file__).resolve().parent.parent / "static" / "index.html"
+# Demo consoles, served same-origin so they can call the API without CORS
+# setup. index.html is the original single-call console; studio.html drives the
+# two-step flow -- three copy options, then a render of the chosen words.
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+DEMO_UI = STATIC_DIR / "index.html"
+STUDIO_UI = STATIC_DIR / "studio.html"
 
 
 def create_app() -> FastAPI:
@@ -61,6 +65,12 @@ def create_app() -> FastAPI:
         @app.get("/", include_in_schema=False)
         async def demo_ui() -> FileResponse:
             return FileResponse(DEMO_UI)
+
+    if STUDIO_UI.is_file():
+
+        @app.get("/studio", include_in_schema=False)
+        async def studio_ui() -> FileResponse:
+            return FileResponse(STUDIO_UI)
 
     return app
 
